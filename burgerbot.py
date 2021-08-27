@@ -28,7 +28,6 @@ class Bot:
       f.close()
 
   def __persist_chats(self) -> None:
-      print(self.chats)
       with open('chats.json', 'w') as f:
         json.dump(self.chats, f)
         f.close()
@@ -41,6 +40,7 @@ class Bot:
       self.__persist_chats()
 
   def __remove_chat(self, chat_id: int) -> None:
+    print('Removing the chat ' + str(chat_id))
     self.chats = [chat for chat in self.chats if chat != chat_id]
     self.__persist_chats()
     
@@ -62,8 +62,9 @@ class Bot:
       c = soup.find('td', class_='buchbar')
 
       if c:
+        print('Got appointment, notifing users')
         try:
-          self.send_message("Catch your chance here: " + register_prefix + c.a['href'])
+          self.__send_message("Catch your chance here: " + register_prefix + c.a['href'])
         except Exception as e:
           print(e)
       else:
@@ -75,6 +76,10 @@ class Bot:
   def __poll(self) -> None:
     self.bot.start_polling()
 
+  def __send_message(self, msg: str) -> None:
+    for c in self.chats:
+      self.bot.bot.send_message(chat_id=c, text=msg)
+
 
   def start(self) -> None:
     print('Starting Bot')
@@ -84,10 +89,6 @@ class Bot:
     poll_task.start()
     parse_task.join()
     poll_task.join()
-
-  def send_message(self, msg: str) -> None:
-    for c in self.chats:
-      self.bot.bot.send_message(chat_id=c, text=msg)
   
 
 def main() -> None:
