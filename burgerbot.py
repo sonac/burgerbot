@@ -2,6 +2,8 @@ import time
 import os
 import json
 import threading
+import logging
+import sys
 
 import requests
 from telegram.ext import CommandHandler, Updater
@@ -35,12 +37,12 @@ class Bot:
 
   def __add_chat(self, chat_id: int) -> None:
     if chat_id not in self.chats:
-      print('Adding new chat')
+      logging.info('Adding new chat')
       self.chats.append(chat_id)
       self.__persist_chats()
 
   def __remove_chat(self, chat_id: int) -> None:
-    print('Removing the chat ' + str(chat_id))
+    logging.info('Removing the chat ' + str(chat_id))
     self.chats = [chat for chat in self.chats if chat != chat_id]
     self.__persist_chats()
     
@@ -62,13 +64,13 @@ class Bot:
       c = soup.find('td', class_='buchbar')
 
       if c:
-        print('Got appointment, notifing users')
+        logging.info('Got appointment, notifing users')
         try:
           self.__send_message("Catch your chance here: " + register_prefix + c.a['href'])
         except Exception as e:
-          print(e)
+          logging.warn(e)
       else:
-        print("No luck yet")
+        logging.info("No luck yet")
       
       time.sleep(15)
 
@@ -82,7 +84,7 @@ class Bot:
 
 
   def start(self) -> None:
-    print('Starting Bot')
+    logging.info('Starting Bot')
     parse_task = threading.Thread(target=self.__parse)
     poll_task = threading.Thread(target=self.__poll)
     parse_task.start()
@@ -96,4 +98,5 @@ def main() -> None:
   bot.start()
 
 if __name__ == '__main__':
+  logging.basicConfig(level='INFO', handlers=[logging.StreamHandler(sys.stdout)],)
   main()
