@@ -118,8 +118,8 @@ class Bot:
 
   def __date_from_msg(self, msg: str) -> str:
     msg_arr = msg.split('/')
-    ts = msg_arr[len(msg_arr) - 2] + 7200 # adding two hours to match Berlin TZ with UTC
-    return datetime.fromtimestamp(int(ts)).strftime("%d %B")
+    ts = int(msg_arr[len(msg_arr) - 2]) + 7200 # adding two hours to match Berlin TZ with UTC
+    return datetime.fromtimestamp(ts).strftime("%d %B")
 
 
   def start(self) -> None:
