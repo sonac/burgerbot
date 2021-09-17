@@ -6,10 +6,12 @@ import logging
 import sys
 from dataclasses import dataclass
 from typing import List
+from datetime import datetime 
 
 import requests
-from telegram.ext import CommandHandler, Updater
 from bs4 import BeautifulSoup
+from telegram import ParseMode
+from telegram.ext import CommandHandler, Updater
 from telegram.ext.callbackcontext import CallbackContext
 from telegram.update import Update
 
@@ -23,9 +25,9 @@ class Message:
 
 class Bot:
   def __init__(self) -> None:
-    self.bot = Updater(os.environ["TELEGRAM_API_KEY"])
+    self.updater = Updater(os.environ["TELEGRAM_API_KEY"])
     self.__get_chats()
-    self.dispatcher = self.bot.dispatcher
+    self.dispatcher = self.updater.dispatcher
     self.dispatcher.add_handler(CommandHandler('start', self.__start))
     self.dispatcher.add_handler(CommandHandler('stop', self.__stop))
     self.cache: List[Message] = []
@@ -44,18 +46,19 @@ class Bot:
 
   def __add_chat(self, chat_id: int) -> None:
     if chat_id not in self.chats:
-      logging.info('Adding new chat')
+      logging.info('adding new chat')
       self.chats.append(chat_id)
       self.__persist_chats()
 
   def __remove_chat(self, chat_id: int) -> None:
-    logging.info('Removing the chat ' + str(chat_id))
+    logging.info('removing the chat ' + str(chat_id))
     self.chats = [chat for chat in self.chats if chat != chat_id]
     self.__persist_chats()
     
 
   def __start(self, update: Update, context: CallbackContext) -> None:
     self.__add_chat(update.message.chat_id)
+    logging.info(f'got new user with id {update.message.chat_id}')
     update.message.reply_text('Welcome to BurgerBot. When there will be slot - you will receive notification. To stop it - just type /stop')
 
 
@@ -66,31 +69,37 @@ class Bot:
   def __parse(self) -> None:
     while True:
       page = requests.get(url)
+      if page.status_code == 429:
+        logging.info('exceeded rate limit. Sleeping for a while')
+        time.sleep(300)
+        next
       soup = BeautifulSoup(page.content, 'html.parser')
 
       c = soup.find('td', class_='buchbar')
 
       if c:
-        logging.info('Got appointment, notifing users')
+        logging.info('got appointment, notifing users')
         try:
-          self.__send_message("Catch your chance here: " + register_prefix + c.a['href'])
+          self.__send_message(c.a['href'])
         except Exception as e:
           logging.warn(e)
       else:
-        logging.info("No luck yet")
+        logging.info("no luck yet")
       self.__clear_cache()
-      time.sleep(15)
+      time.sleep(30)
 
 
   def __poll(self) -> None:
-    self.bot.start_polling()
+    self.updater.start_polling()
 
   def __send_message(self, msg: str) -> None:
     if self.__msg_in_cache(msg):
+      logging.info('Notification is cached already. Do not repeat sending')
       return
     self.__add_msg_to_cache(msg)
+    md_msg = f"There are slots on {self.__date_from_msg(msg)} available for booking, click [here]({url}) to check it out"
     for c in self.chats:
-      self.bot.bot.send_message(chat_id=c, text=msg)
+      self.updater.bot.send_message(chat_id=c, text=md_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
   def __msg_in_cache(self, msg: str) -> bool:
     for m in self.cache:
@@ -103,10 +112,18 @@ class Bot:
 
   def __clear_cache(self) -> None:
     cur_ts = int(time.time())
-    self.cache = [m for m in self.cache if (cur_ts - m.ts) > 300]
+    if len(self.cache) > 0:
+      logging.info('clearing some messages from cache')
+      self.cache = [m for m in self.cache if (cur_ts - m.ts) < 300]
+
+  def __date_from_msg(self, msg: str) -> str:
+    msg_arr = msg.split('/')
+    ts = msg_arr[len(msg_arr) - 2] + 7200 # adding two hours to match Berlin TZ with UTC
+    return datetime.fromtimestamp(int(ts)).strftime("%d %B")
+
 
   def start(self) -> None:
-    logging.info('Starting Bot')
+    logging.info('starting bot')
     parse_task = threading.Thread(target=self.__parse)
     poll_task = threading.Thread(target=self.__poll)
     parse_task.start()
@@ -120,5 +137,9 @@ def main() -> None:
   bot.start()
 
 if __name__ == '__main__':
-  logging.basicConfig(level='INFO', handlers=[logging.StreamHandler(sys.stdout)],)
+  log_level = os.getenv('LOG_LEVEL', 'INFO')
+  logging.basicConfig(
+    level=log_level, 
+    format="%(asctime)s [%(levelname)-5.5s] %(message)s", 
+    handlers=[logging.StreamHandler(sys.stdout)],)
   main()
