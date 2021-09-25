@@ -1,3 +1,6 @@
 .env
 poetry.lock
 chats.json
+chats_tmp.json
+test.py
+__pycache__
