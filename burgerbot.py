@@ -4,7 +4,7 @@ import json
 import threading
 import logging
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import List
 from datetime import datetime 
 
@@ -15,6 +15,8 @@ from telegram.ext import CommandHandler, Updater
 from telegram.ext.callbackcontext import CallbackContext
 from telegram.update import Update
 
+from auslander import check_for_termin, auslander_url
+
 url = 'https://service.berlin.de/terminvereinbarung/termin/tag.php?termin=1&anliegen[]=120686&dienstleisterlist=122210,122217,327316,122219,327312,122227,327314,122231,327346,122243,327348,122252,329742,122260,329745,122262,329748,122254,329751,122271,327278,122273,327274,122277,327276,330436,122280,327294,122282,327290,122284,327292,327539,122291,327270,122285,327266,122286,327264,122296,327268,150230,329760,122301,327282,122297,327286,122294,327284,122312,329763,122314,329775,122304,327330,122311,327334,122309,327332,122281,327352,122279,329772,122276,327324,122274,327326,122267,329766,122246,327318,122251,327320,122257,327322,122208,327298,122226,327300&herkunft=http%3A%2F%2Fservice.berlin.de%2Fdienstleistung%2F120686%2F'
 register_prefix = 'https://service.berlin.de'
 
@@ -23,6 +25,11 @@ class Message:
   message: str
   ts: int # timestamp of adding msg to cache in seconds
 
+@dataclass
+class Chat:
+  id: int
+  auslander_on: bool
+
 class Bot:
   def __init__(self) -> None:
     self.updater = Updater(os.environ["TELEGRAM_API_KEY"])
@@ -30,25 +37,42 @@ class Bot:
     self.dispatcher = self.updater.dispatcher
     self.dispatcher.add_handler(CommandHandler('start', self.__start))
     self.dispatcher.add_handler(CommandHandler('stop', self.__stop))
+    self.dispatcher.add_handler(CommandHandler('auslander', self.__switch_auslander))
     self.cache: List[Message] = []
 
 
   def __get_chats(self) -> None:
     with open('chats.json', 'r') as f:
-      self.chats = json.load(f)
+      self.chats = [Chat(**j) for j in json.load(f)]
       f.close()
 
   def __persist_chats(self) -> None:
       with open('chats.json', 'w') as f:
-        json.dump(self.chats, f)
+        json.dump([asdict(c) for c in self.chats], f)
         f.close()
 
 
   def __add_chat(self, chat_id: int) -> None:
     if chat_id not in self.chats:
       logging.info('adding new chat')
-      self.chats.append(chat_id)
+      chat = Chat(chat_id, False)
+      self.chats.append(chat)
       self.__persist_chats()
+
+  def __switch_auslander(self, update: Update, _: CallbackContext) -> None:
+    chat_id = update.message.chat_id
+    logging.info('switching auslander for ' + str(chat_id))
+    for idx in range(0, len(self.chats)):
+      logging.info(self.chats[idx])
+      if self.chats[idx].id == chat_id:
+        self.chats[idx].auslander_on = not self.chats[idx].auslander_on
+        self.updater.bot.send_message(chat_id=chat_id, text=self.__auslander_chat(self.chats[idx].auslander_on))
+        self.__persist_chats()
+
+  def __auslander_chat(self, is_on: bool) -> str:
+    if is_on:
+      return "You will now receive updates for auslander"
+    return "There will be no updates from auslander anymore"
 
   def __remove_chat(self, chat_id: int) -> None:
     logging.info('removing the chat ' + str(chat_id))
@@ -56,7 +80,7 @@ class Bot:
     self.__persist_chats()
     
 
-  def __start(self, update: Update, context: CallbackContext) -> None:
+  def __start(self, update: Update, _: CallbackContext) -> None:
     self.__add_chat(update.message.chat_id)
     logging.info(f'got new user with id {update.message.chat_id}')
     update.message.reply_text('Welcome to BurgerBot. When there will be slot - you will receive notification. To stop it - just type /stop')
@@ -72,7 +96,7 @@ class Bot:
       if page.status_code == 429:
         logging.info('exceeded rate limit. Sleeping for a while')
         time.sleep(300)
-        next
+        continue
       soup = BeautifulSoup(page.content, 'html.parser')
 
       c = soup.find('td', class_='buchbar')
@@ -86,8 +110,17 @@ class Bot:
       else:
         logging.info("no luck yet")
       self.__clear_cache()
-      time.sleep(30)
+      time.sleep(45)
 
+  def __auslander(self) -> None:
+    while True:
+      if check_for_termin():
+        logging.info('found a window in auslander')
+        for aus_chat in [c for c in self.chats if c.auslander_on]:
+          self.updater.bot.send_message(chat_id=aus_chat.id, text=auslander_url)
+      else:
+        logging.info('no luck this time. will check in 5 minutes')
+      time.sleep(300)
 
   def __poll(self) -> None:
     self.updater.start_polling()
@@ -121,15 +154,17 @@ class Bot:
     ts = int(msg_arr[len(msg_arr) - 2]) + 7200 # adding two hours to match Berlin TZ with UTC
     return datetime.fromtimestamp(ts).strftime("%d %B")
 
-
   def start(self) -> None:
     logging.info('starting bot')
     parse_task = threading.Thread(target=self.__parse)
     poll_task = threading.Thread(target=self.__poll)
+    aus_task = threading.Thread(target=self.__auslander)
     parse_task.start()
     poll_task.start()
+    aus_task.start()
     parse_task.join()
     poll_task.join()
+    aus_task.join()
   
 
 def main() -> None:
