@@ -4,18 +4,19 @@ import json
 import threading
 import logging
 import sys
-from dataclasses import dataclass
+import queue
+from dataclasses import dataclass, asdict
 from typing import List
 from datetime import datetime 
 
-import requests
-from bs4 import BeautifulSoup
 from telegram import ParseMode
 from telegram.ext import CommandHandler, Updater
 from telegram.ext.callbackcontext import CallbackContext
 from telegram.update import Update
 
-url = 'https://service.berlin.de/terminvereinbarung/termin/tag.php?termin=1&anliegen[]=120686&dienstleisterlist=122210,122217,327316,122219,327312,122227,327314,122231,327346,122243,327348,122252,329742,122260,329745,122262,329748,122254,329751,122271,327278,122273,327274,122277,327276,330436,122280,327294,122282,327290,122284,327292,327539,122291,327270,122285,327266,122286,327264,122296,327268,150230,329760,122301,327282,122297,327286,122294,327284,122312,329763,122314,329775,122304,327330,122311,327334,122309,327332,122281,327352,122279,329772,122276,327324,122274,327326,122267,329766,122246,327318,122251,327320,122257,327322,122208,327298,122226,327300&herkunft=http%3A%2F%2Fservice.berlin.de%2Fdienstleistung%2F120686%2F'
+from parser import Parser, Slot, build_url
+
+ua_url = 'https://service.berlin.de/terminvereinbarung/termin/tag.php?termin=1&dienstleister=330857&anliegen[]=330869&herkunft=1'
 register_prefix = 'https://service.berlin.de'
 
 @dataclass
@@ -23,105 +24,158 @@ class Message:
   message: str
   ts: int # timestamp of adding msg to cache in seconds
 
+
+@dataclass
+class User:
+  chat_id: int
+  services: List[int]
+  def __init__(self, chat_id, services=[120686]):
+    self.chat_id = chat_id
+    self.services = services if len(services) > 0 else [120686]
+  
+
 class Bot:
   def __init__(self) -> None:
     self.updater = Updater(os.environ["TELEGRAM_API_KEY"])
-    self.__get_chats()
+    self.users = self.__get_chats()
+    self.services = self.__get_uq_services()
+    self.parser = Parser(self.services)
     self.dispatcher = self.updater.dispatcher
+    self.dispatcher.add_handler(CommandHandler('help', self.__help))
     self.dispatcher.add_handler(CommandHandler('start', self.__start))
     self.dispatcher.add_handler(CommandHandler('stop', self.__stop))
+    self.dispatcher.add_handler(CommandHandler('add_service', self.__add_service))
+    self.dispatcher.add_handler(CommandHandler('remove_service', self.__remove_service))
+    self.dispatcher.add_handler(CommandHandler('add_ua', self.__add_ua))
+    self.dispatcher.add_handler(CommandHandler('remove_ua', self.__remove_ua))
     self.cache: List[Message] = []
-    self.proxy_on: bool = False
 
 
-  def __get_chats(self) -> None:
+  def __get_uq_services(self) -> List[int]:
+    services = []
+    for u in self.users:
+      services.extend(u.services)
+    return list(set(services))
+
+  def __get_chats(self) -> List[User]:
     with open('chats.json', 'r') as f:
-      self.chats = json.load(f)
+      users = [User(u['chat_id'], u['services']) for u in json.load(f)]
       f.close()
+      print(users)
+      return users
 
   def __persist_chats(self) -> None:
       with open('chats.json', 'w') as f:
-        json.dump(self.chats, f)
+        json.dump([asdict(u) for u in self.users], f)
         f.close()
 
 
   def __add_chat(self, chat_id: int) -> None:
-    if chat_id not in self.chats:
-      logging.info('adding new chat')
-      self.chats.append(chat_id)
+    if chat_id not in [u.chat_id for u in self.users]:
+      logging.info('adding new user')
+      self.users.append(User(chat_id))
       self.__persist_chats()
 
   def __remove_chat(self, chat_id: int) -> None:
     logging.info('removing the chat ' + str(chat_id))
-    self.chats = [chat for chat in self.chats if chat != chat_id]
+    self.users = [u for u in self.users if u.chat_id != chat_id]
     self.__persist_chats()
-    
 
-  def __start(self, update: Update, context: CallbackContext) -> None:
+  def __help(self, update: Update, _: CallbackContext) -> None:
+    update.message.reply_text("""
+/start - start the bot
+/stop - stop the bot
+/add_service <service_id> - add service to your list
+/remove_service <service_id> - remove service from your list
+/add_ua - register for UA refugees
+/remove_ua - remove register from UA refugees
+""")
+
+  def __id_to_service(self, service_id: int) -> str:
+    if service_id == -1:
+      return 'UA registration'
+    if service_id == 120686:
+      return 'Anmeldung'
+    if service_id == 120680:
+      return 'Beglaubigungen'
+    return 'some service'
+    
+  def __start(self, update: Update, _: CallbackContext) -> None:
     self.__add_chat(update.message.chat_id)
     logging.info(f'got new user with id {update.message.chat_id}')
-    update.message.reply_text('Welcome to BurgerBot. When there will be slot - you will receive notification. To stop it - just type /stop')
+    update.message.reply_text('Welcome to BurgerBot. When there will be slot - you will receive notification. To get information about usage - type /help. To stop it - just type /stop')
 
-
-  def __stop(self, update: Update, context: CallbackContext) -> None:
+  def __stop(self, update: Update, _: CallbackContext) -> None:
     self.__remove_chat(update.message.chat_id)
     update.message.reply_text('Thanks for using me! Bye!')
+  
+  def __add_service(self, update: Update, _: CallbackContext) -> None:
+    logging.info(f'adding service {update.message}')
+    service_id = int(update.message.text.split(' ')[1])
+    for u in self.users:
+      if u.chat_id == update.message.chat_id:
+        u.services.append(int(service_id))
+        self.__persist_chats()
+        break
+    update.message.reply_text("Service added")
+  
+  def __remove_service(self, update: Update, _: CallbackContext) -> None:
+    logging.info(f'removing service {update.message}')
+    service_id = int(update.message.text.split(' ')[1])
+    for u in self.users:
+      if u.chat_id == update.message.chat_id:
+        u.services.remove(int(service_id))
+        self.__persist_chats()
+        break
+    update.message.reply_text("Service removed")
 
-  def __get_url(self) -> requests.Response:
-    if self.proxy_on:
-      return requests.get(url, proxies={'https': 'socks5://127.0.0.1:9050'})
-    return requests.get(url)
+  def __add_ua(self, update: Update, _: CallbackContext) -> None:
+    logging.info(f'adding ua {update.message}')
+    for u in self.users:
+      if u.chat_id == update.message.chat_id:
+        u.services.append(-1)
+        self.__persist_chats()
+        break
+    update.message.reply_text("UA added")
 
-  def __toggle_proxy(self) -> None:
-    self.proxy_on = not self.proxy_on
-
-  def __parse(self) -> None:
-    while True:
-      try:
-        page = self.__get_url()
-        if page.status_code == 429:
-          logging.info('exceeded rate limit. Sleeping for a while')
-          time.sleep(300)
-          self.__toggle_proxy()
-          continue
-        soup = BeautifulSoup(page.content, 'html.parser')
-
-        slots = soup.find_all('td', class_='buchbar')
-
-        for slot in slots:
-            logging.info('notifing users')
-            try:
-              self.__send_message(slot.a['href'])
-            except Exception as e:
-              logging.warn(e)
-        if len(slots) == 0:
-          logging.info("no luck yet")
-        self.__clear_cache()
-      except Exception as e: ## sometimes shit happens
-        logging.warn(e)
-        self.__toggle_proxy()
-      time.sleep(45)
-
+  def __remove_ua(self, update: Update, _: CallbackContext) -> None:
+    logging.info(f'removing ua {update.message}')
+    for u in self.users:
+      if u.chat_id == update.message.chat_id:
+        u.services.remove(-1)
+        self.__persist_chats()
+        break
+    update.message.reply_text("UA removed")
 
   def __poll(self) -> None:
     self.updater.start_polling()
 
-  def __send_message(self, msg: str) -> None:
-    if self.__msg_in_cache(msg):
+  def __parse(self) -> None:
+    while True:
+      slots = self.parser.parse()
+      for slot in slots:
+        self.__send_message(slot)
+      time.sleep(30)
+
+
+  def __send_message(self, slot: Slot) -> None:
+    if self.__msg_in_cache(slot.msg):
       logging.info('Notification is cached already. Do not repeat sending')
       return
-    self.__add_msg_to_cache(msg)
-    md_msg = f"There are slots on {self.__date_from_msg(msg)} available for booking, click [here]({url}) to check it out"
-    for c in self.chats:
-      logging.debug(f"sending msg to {str(c)}")
+    self.__add_msg_to_cache(slot.msg)
+    md_msg = f"There are slots on {self.__date_from_msg(slot.msg)} available for booking for {self.__id_to_service(slot.service_id)}, click [here]({build_url(slot.service_id)}) to check it out"
+    users = [u for u in self.users if slot.service_id in u.services]
+    for u in users:
+      logging.debug(f"sending msg to {str(u.chat_id)}")
       try:
-        self.updater.bot.send_message(chat_id=c, text=md_msg, parse_mode=ParseMode.MARKDOWN_V2)
+        self.updater.bot.send_message(chat_id=u.chat_id, text=md_msg, parse_mode=ParseMode.MARKDOWN_V2)
       except Exception as e:
         if 'bot was blocked by the user' in e.__str__():
           logging.info('removing since user blocked bot')
-          self.__remove_chat(c)
+          self.__remove_chat(u.chat_id)
         else:
-          logging.warn(e)
+          logging.warning(e)
+    self.__clear_cache()
 
   def __msg_in_cache(self, msg: str) -> bool:
     for m in self.cache:
@@ -140,14 +194,15 @@ class Bot:
 
   def __date_from_msg(self, msg: str) -> str:
     msg_arr = msg.split('/')
+    logging.info(msg)
     ts = int(msg_arr[len(msg_arr) - 2]) + 7200 # adding two hours to match Berlin TZ with UTC
     return datetime.fromtimestamp(ts).strftime("%d %B")
 
 
   def start(self) -> None:
     logging.info('starting bot')
-    parse_task = threading.Thread(target=self.__parse)
     poll_task = threading.Thread(target=self.__poll)
+    parse_task= threading.Thread(target=self.__parse)
     parse_task.start()
     poll_task.start()
     parse_task.join()
