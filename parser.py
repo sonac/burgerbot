@@ -32,7 +32,7 @@ class Parser:
     return requests.get(url)
 
   def __toggle_proxy(self) -> None:
-    self.proxy_on = False #not self.proxy_on
+    self.proxy_on = not self.proxy_on
 
   def __parse_page(self, page, service_id) -> List[str]:
     try:
