@@ -111,13 +111,17 @@ class Bot:
   
   def __add_service(self, update: Update, _: CallbackContext) -> None:
     logging.info(f'adding service {update.message}')
-    service_id = int(update.message.text.split(' ')[1])
-    for u in self.users:
-      if u.chat_id == update.message.chat_id:
-        u.services.append(int(service_id))
-        self.__persist_chats()
-        break
-    update.message.reply_text("Service added")
+    try:
+      service_id = int(update.message.text.split(' ')[1])
+      for u in self.users:
+        if u.chat_id == update.message.chat_id:
+          u.services.append(int(service_id))
+          self.__persist_chats()
+          break
+      update.message.reply_text("Service added")
+    except Exception as e:
+      update.message.reply_text("Failed to add service, have you specified the service id?")
+      logging.error(e)
   
   def __remove_service(self, update: Update, _: CallbackContext) -> None:
     logging.info(f'removing service {update.message}')
