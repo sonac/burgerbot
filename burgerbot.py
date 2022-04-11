@@ -19,6 +19,14 @@ from parser import Parser, Slot, build_url
 ua_url = 'https://service.berlin.de/terminvereinbarung/termin/tag.php?termin=1&dienstleister=330857&anliegen[]=330869&herkunft=1'
 register_prefix = 'https://service.berlin.de'
 
+service_map = {
+    120686: 'Anmeldung',
+    120680: 'Beglaubigungen',
+    120701: 'Personalausweis beantragen',
+    121151: 'Reisepass beantragen',
+    121921: 'Gewerbeanmeldung'
+}
+
 @dataclass
 class Message:
   message: str
@@ -46,8 +54,7 @@ class Bot:
     self.dispatcher.add_handler(CommandHandler('stop', self.__stop))
     self.dispatcher.add_handler(CommandHandler('add_service', self.__add_service))
     self.dispatcher.add_handler(CommandHandler('remove_service', self.__remove_service))
-    self.dispatcher.add_handler(CommandHandler('add_ua', self.__add_ua))
-    self.dispatcher.add_handler(CommandHandler('remove_ua', self.__remove_ua))
+    self.dispatcher.add_handler(CommandHandler('services', self.__services))
     self.cache: List[Message] = []
 
 
@@ -55,6 +62,7 @@ class Bot:
     services = []
     for u in self.users:
       services.extend(u.services)
+    services = filter(lambda x: x in service_map.keys(), services)
     return list(set(services))
 
   def __get_chats(self) -> List[User]:
@@ -81,23 +89,25 @@ class Bot:
     self.users = [u for u in self.users if u.chat_id != chat_id]
     self.__persist_chats()
 
+  def __services(self, update: Update, _: CallbackContext) -> None:
+    services_text = ""
+    for k, v in service_map.items():
+      services_text += f"{k} - {v}\n"
+    update.message.reply_text("Available services:\n" + services_text)
+
   def __help(self, update: Update, _: CallbackContext) -> None:
-    update.message.reply_text("""
+    try:
+      update.message.reply_text("""
 /start - start the bot
 /stop - stop the bot
 /add_service <service_id> - add service to your list
 /remove_service <service_id> - remove service from your list
-/add_ua - register for UA refugees
-/remove_ua - remove register from UA refugees
+/services - list of available services
 """)
+    except Exception as e:
+      logging.error(e)
 
   def __id_to_service(self, service_id: int) -> str:
-    if service_id == -1:
-      return 'UA registration'
-    if service_id == 120686:
-      return 'Anmeldung'
-    if service_id == 120680:
-      return 'Beglaubigungen'
     return 'some service'
     
   def __start(self, update: Update, _: CallbackContext) -> None:
@@ -132,24 +142,6 @@ class Bot:
         self.__persist_chats()
         break
     update.message.reply_text("Service removed")
-
-  def __add_ua(self, update: Update, _: CallbackContext) -> None:
-    logging.info(f'adding ua {update.message}')
-    for u in self.users:
-      if u.chat_id == update.message.chat_id:
-        u.services.append(-1)
-        self.__persist_chats()
-        break
-    update.message.reply_text("UA added")
-
-  def __remove_ua(self, update: Update, _: CallbackContext) -> None:
-    logging.info(f'removing ua {update.message}')
-    for u in self.users:
-      if u.chat_id == update.message.chat_id:
-        u.services.remove(-1)
-        self.__persist_chats()
-        break
-    update.message.reply_text("UA removed")
 
   def __poll(self) -> None:
     self.updater.start_polling()
