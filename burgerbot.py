@@ -130,8 +130,8 @@ class Bot:
           break
       update.message.reply_text("Service added")
     except Exception as e:
+      update.message.reply_text("Failed to add service, have you specified the service id?")
       logging.error(e)
-      update.message.reply_text("Service not added")
   
   def __remove_service(self, update: Update, _: CallbackContext) -> None:
     logging.info(f'removing service {update.message}')
