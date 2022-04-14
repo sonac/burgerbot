@@ -41,7 +41,12 @@ class User:
   def __init__(self, chat_id, services=[120686]):
     self.chat_id = chat_id
     self.services = services if len(services) > 0 else [120686]
-  
+
+
+  def marshall_user(self) -> str:
+    self.services = list(set([s for s in self.services if s in list(service_map.keys())]))
+    return asdict(self)
+
 
 class Bot:
   def __init__(self) -> None:
@@ -75,9 +80,8 @@ class Bot:
 
   def __persist_chats(self) -> None:
       with open('chats.json', 'w') as f:
-        json.dump([asdict(u) for u in self.users], f)
+        json.dump([u.marshall_user() for u in self.users], f)
         f.close()
-
 
   def __add_chat(self, chat_id: int) -> None:
     if chat_id not in [u.chat_id for u in self.users]:
@@ -116,7 +120,7 @@ class Bot:
   def __stop(self, update: Update, _: CallbackContext) -> None:
     self.__remove_chat(update.message.chat_id)
     update.message.reply_text('Thanks for using me! Bye!')
-  
+
   def __add_service(self, update: Update, _: CallbackContext) -> None:
     logging.info(f'adding service {update.message}')
     try:
@@ -130,7 +134,7 @@ class Bot:
     except Exception as e:
       update.message.reply_text("Failed to add service, have you specified the service id?")
       logging.error(e)
-  
+
   def __remove_service(self, update: Update, _: CallbackContext) -> None:
     logging.info(f'removing service {update.message}')
     service_id = int(update.message.text.split(' ')[1])
