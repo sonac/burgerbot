@@ -107,9 +107,6 @@ class Bot:
     except Exception as e:
       logging.error(e)
 
-  def __id_to_service(self, service_id: int) -> str:
-    return 'some service'
-    
   def __start(self, update: Update, _: CallbackContext) -> None:
     self.__add_chat(update.message.chat_id)
     logging.info(f'got new user with id {update.message.chat_id}')
@@ -159,7 +156,7 @@ class Bot:
       logging.info('Notification is cached already. Do not repeat sending')
       return
     self.__add_msg_to_cache(slot.msg)
-    md_msg = f"There are slots on {self.__date_from_msg(slot.msg)} available for booking for {self.__id_to_service(slot.service_id)}, click [here]({build_url(slot.service_id)}) to check it out"
+    md_msg = f"There are slots on {self.__date_from_msg(slot.msg)} available for booking for {service_map[slot.service_id]}, click [here]({build_url(slot.service_id)}) to check it out"
     users = [u for u in self.users if slot.service_id in u.services]
     for u in users:
       logging.debug(f"sending msg to {str(u.chat_id)}")
