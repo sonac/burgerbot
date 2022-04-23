@@ -25,7 +25,8 @@ service_map = {
     120701: 'Personalausweis beantragen',
     121151: 'Reisepass beantragen',
     121921: 'Gewerbeanmeldung',
-    327537: 'Fahrerlaubnis - Umschreibung einer ausländischen'
+    327537: 'Fahrerlaubnis - Umschreibung einer ausländischen',
+    324280: 'Niederlassungserlaubnis oder Erlaubnis',
 }
 
 @dataclass
