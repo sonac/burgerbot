@@ -29,6 +29,7 @@ service_map = {
     121921: 'Gewerbeanmeldung',
     327537: 'Fahrerlaubnis - Umschreibung einer ausländischen',
     324280: 'Niederlassungserlaubnis oder Erlaubnis',
+    318998: 'Einbürgerung - Verleihung der deutschen Staatsangehörigkeit beantragen',
 }
 
 @dataclass
