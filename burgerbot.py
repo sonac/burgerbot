@@ -16,6 +16,8 @@ from telegram.update import Update
 
 from parser import Parser, Slot, build_url
 
+
+CHATS_FILE = 'chats.json'
 ua_url = 'https://service.berlin.de/terminvereinbarung/termin/tag.php?termin=1&dienstleister=330857&anliegen[]=330869&herkunft=1'
 register_prefix = 'https://service.berlin.de'
 
@@ -27,6 +29,7 @@ service_map = {
     121921: 'Gewerbeanmeldung',
     327537: 'Fahrerlaubnis - Umschreibung einer ausländischen',
     324280: 'Niederlassungserlaubnis oder Erlaubnis',
+    318998: 'Einbürgerung - Verleihung der deutschen Staatsangehörigkeit beantragen',
 }
 
 @dataclass
@@ -52,6 +55,7 @@ class User:
 class Bot:
   def __init__(self) -> None:
     self.updater = Updater(os.environ["TELEGRAM_API_KEY"])
+    self.__init_chats()
     self.users = self.__get_chats()
     self.services = self.__get_uq_services()
     self.parser = Parser(self.services)
@@ -72,15 +76,20 @@ class Bot:
     services = filter(lambda x: x in service_map.keys(), services)
     return list(set(services))
 
+  def __init_chats(self)  -> None:
+    if not os.path.exists(CHATS_FILE):
+      with open(CHATS_FILE, "w") as f:
+        f.write("[]")
+
   def __get_chats(self) -> List[User]:
-    with open('chats.json', 'r') as f:
+    with open(CHATS_FILE, 'r') as f:
       users = [User(u['chat_id'], u['services']) for u in json.load(f)]
       f.close()
       print(users)
       return users
 
   def __persist_chats(self) -> None:
-      with open('chats.json', 'w') as f:
+      with open(CHATS_FILE, 'w') as f:
         json.dump([u.marshall_user() for u in self.users], f)
         f.close()
 
