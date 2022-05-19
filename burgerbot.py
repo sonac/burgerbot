@@ -15,6 +15,7 @@ from telegram.ext.callbackcontext import CallbackContext
 from telegram.update import Update
 
 from parser import Parser, Slot, build_url
+from parser2 import Parser2, Alert
 
 
 CHATS_FILE = 'chats.json'
@@ -42,6 +43,7 @@ class Message:
 class User:
   chat_id: int
   services: List[int]
+  personal_link: str
   def __init__(self, chat_id, services=[120686]):
     self.chat_id = chat_id
     self.services = services if len(services) > 0 else [120686]
@@ -66,6 +68,7 @@ class Bot:
     self.dispatcher.add_handler(CommandHandler('add_service', self.__add_service))
     self.dispatcher.add_handler(CommandHandler('remove_service', self.__remove_service))
     self.dispatcher.add_handler(CommandHandler('services', self.__services))
+    self.dispatcher.add_handler(CommandHandler('add_aus', self.__add_aus))
     self.cache: List[Message] = []
 
 
@@ -118,6 +121,7 @@ class Bot:
 /add_service <service_id> - add service to your list
 /remove_service <service_id> - remove service from your list
 /services - list of available services
+/add_aus <personal_link> - add Ausländer personal link
 """)
     except Exception as e:
       logging.error(e)
@@ -154,6 +158,20 @@ class Bot:
         self.__persist_chats()
         break
     update.message.reply_text("Service removed")
+
+  def __add_aus(self, update: Update, _: CallbackContext) -> None:
+    logging.info(f'adding aus {update.message}')
+    try:
+      personal_link = int(update.message.text.split(' ')[1])
+      for u in self.users:
+        if u.chat_id == update.message.chat_id:
+          u.personal_link = personal_link
+          self.__persist_chats()
+          break
+      update.message.reply_text("Aus added")
+    except Exception as e:
+      update.message.reply_text("Failed to add aus, have you specified your personal form link?")
+      logging.error(e)
 
   def __poll(self) -> None:
     self.updater.start_polling()
