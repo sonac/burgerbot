@@ -44,13 +44,17 @@ class User:
   chat_id: int
   services: List[int]
   personal_link: str
-  def __init__(self, chat_id, services=[120686]):
+  def __init__(self, chat_id, services=[120686], personal_link=''):
     self.chat_id = chat_id
     self.services = services if len(services) > 0 else [120686]
+    if len(personal_link) > 0
+      self.personal_link = personal_link
 
 
   def marshall_user(self) -> str:
     self.services = list(set([s for s in self.services if s in list(service_map.keys())]))
+    if len(self.personal_link) > 0
+      self.personal_link = personal_link
     return asdict(self)
 
 
@@ -61,6 +65,8 @@ class Bot:
     self.users = self.__get_chats()
     self.services = self.__get_uq_services()
     self.parser = Parser(self.services)
+    self.personal_link = self.__get_uq_personal_links()[0]
+    self.parser2 = Parser2(self.personal_link)
     self.dispatcher = self.updater.dispatcher
     self.dispatcher.add_handler(CommandHandler('help', self.__help))
     self.dispatcher.add_handler(CommandHandler('start', self.__start))
@@ -79,6 +85,13 @@ class Bot:
     services = filter(lambda x: x in service_map.keys(), services)
     return list(set(services))
 
+  def __get_uq_personal_links(self) -> List[int]:
+    personal_links = []
+    for u in self.users:
+      personal_links.extend([u.personal_link])
+    personal_links = filter(lambda x: x in service_map.keys(), personal_links)
+    return list(set(personal_links))
+
   def __init_chats(self)  -> None:
     if not os.path.exists(CHATS_FILE):
       with open(CHATS_FILE, "w") as f:
@@ -86,7 +99,7 @@ class Bot:
 
   def __get_chats(self) -> List[User]:
     with open(CHATS_FILE, 'r') as f:
-      users = [User(u['chat_id'], u['services']) for u in json.load(f)]
+      users = [User(u['chat_id'], u['services'], u['personal_link']) for u in json.load(f)]
       f.close()
       print(users)
       return users
