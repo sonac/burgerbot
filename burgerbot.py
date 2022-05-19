@@ -75,6 +75,7 @@ class Bot:
     self.dispatcher.add_handler(CommandHandler('remove_service', self.__remove_service))
     self.dispatcher.add_handler(CommandHandler('services', self.__services))
     self.dispatcher.add_handler(CommandHandler('add_aus', self.__add_aus))
+    self.dispatcher.add_handler(CommandHandler('remove_aus', self.__remove_aus))
     self.cache: List[Message] = []
 
 
@@ -135,6 +136,7 @@ class Bot:
 /remove_service <service_id> - remove service from your list
 /services - list of available services
 /add_aus <personal_link> - add Ausländer personal link
+/remove_aus - remove Ausländer personal link
 """)
     except Exception as e:
       logging.error(e)
@@ -185,6 +187,15 @@ class Bot:
     except Exception as e:
       update.message.reply_text("Failed to add aus, have you specified your personal form link?")
       logging.error(e)
+
+  def __remove_aus(self, update: Update, _: CallbackContext) -> None:
+    logging.info(f'removing aus {update.message}')
+    for u in self.users:
+      if u.chat_id == update.message.chat_id:
+        u.personal_link = None
+        self.__persist_chats()
+        break
+    update.message.reply_text("Service removed")
 
   def __poll(self) -> None:
     self.updater.start_polling()
