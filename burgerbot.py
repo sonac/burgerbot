@@ -194,6 +194,9 @@ class Bot:
       slots = self.parser.parse()
       for slot in slots:
         self.__send_message(slot)
+      alerts = self.parser2.parse()
+      for alert in alerts:
+        self.__send_message2(alert)
       time.sleep(30)
 
 
@@ -204,6 +207,25 @@ class Bot:
     self.__add_msg_to_cache(slot.msg)
     md_msg = f"There are slots on {self.__date_from_msg(slot.msg)} available for booking for {service_map[slot.service_id]}, click [here]({build_url(slot.service_id)}) to check it out"
     users = [u for u in self.users if slot.service_id in u.services]
+    for u in users:
+      logging.debug(f"sending msg to {str(u.chat_id)}")
+      try:
+        self.updater.bot.send_message(chat_id=u.chat_id, text=md_msg, parse_mode=ParseMode.MARKDOWN_V2)
+      except Exception as e:
+        if 'bot was blocked by the user' in e.__str__():
+          logging.info('removing since user blocked bot')
+          self.__remove_chat(u.chat_id)
+        else:
+          logging.warning(e)
+    self.__clear_cache()
+
+  def __send_message2(self, alert: Alert) -> None:
+    if self.__msg_in_cache(alert.msg):
+      logging.info('Notification is cached already. Do not repeat sending')
+      return
+    self.__add_msg_to_cache(alert.msg)
+    md_msg = f"Personal link alert: '{alert.msg}', click [here]({self.personal_link}) to check it out"
+    users = [u for u in self.users]
     for u in users:
       logging.debug(f"sending msg to {str(u.chat_id)}")
       try:
