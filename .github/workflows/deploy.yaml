@@ -1,4 +1,6 @@
 name: deploy
+on:
+  push
 
 jobs:
   deploy:
