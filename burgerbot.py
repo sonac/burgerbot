@@ -47,13 +47,13 @@ class User:
   def __init__(self, chat_id, services=[120686], personal_link=''):
     self.chat_id = chat_id
     self.services = services if len(services) > 0 else [120686]
-    if len(personal_link) > 0
+    if len(personal_link) > 0:
       self.personal_link = personal_link
 
 
   def marshall_user(self) -> str:
     self.services = list(set([s for s in self.services if s in list(service_map.keys())]))
-    if len(self.personal_link) > 0
+    if len(self.personal_link) > 0:
       self.personal_link = personal_link
     return asdict(self)
 
