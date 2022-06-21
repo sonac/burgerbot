@@ -30,6 +30,8 @@ service_map = {
     327537: 'Fahrerlaubnis - Umschreibung einer ausländischen',
     324280: 'Niederlassungserlaubnis oder Erlaubnis',
     318998: 'Einbürgerung - Verleihung der deutschen Staatsangehörigkeit beantragen',
+    121469: 'Kinderreisepass beantragen / verlängern / aktualisieren',
+    121598: 'Fahrerlaubnis - Umschreibung einer ausländischen Fahrerlaubnis aus einem EU-/EWR-Staat',
 }
 
 @dataclass
