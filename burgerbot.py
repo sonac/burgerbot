@@ -30,6 +30,9 @@ service_map = {
     327537: 'Fahrerlaubnis - Umschreibung einer ausländischen',
     324280: 'Niederlassungserlaubnis oder Erlaubnis',
     318998: 'Einbürgerung - Verleihung der deutschen Staatsangehörigkeit beantragen',
+    326798: 'Blaue Karte EU auf einen neuen Pass übertragen',
+    121469: 'Kinderreisepass beantragen / verlängern / aktualisieren',
+    121598: 'Fahrerlaubnis - Umschreibung einer ausländischen Fahrerlaubnis aus einem EU-/EWR-Staat',
 }
 
 @dataclass
@@ -147,13 +150,16 @@ class Bot:
 
   def __remove_service(self, update: Update, _: CallbackContext) -> None:
     logging.info(f'removing service {update.message}')
-    service_id = int(update.message.text.split(' ')[1])
-    for u in self.users:
-      if u.chat_id == update.message.chat_id:
-        u.services.remove(int(service_id))
-        self.__persist_chats()
-        break
-    update.message.reply_text("Service removed")
+    try:
+      service_id = int(update.message.text.split(' ')[1])
+      for u in self.users:
+        if u.chat_id == update.message.chat_id:
+          u.services.remove(int(service_id))
+          self.__persist_chats()
+          break
+      update.message.reply_text("Service removed")
+    except IndexError:
+      update.message.reply_text("Wrong usage. Please type '/remove_service 123456'")
 
   def __poll(self) -> None:
     self.updater.start_polling()
