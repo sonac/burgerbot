@@ -15,6 +15,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           username: ${{ secrets.SSH_USER }}
           script: |
-            git clone git@github.com:sonac/burgerbot.git
-            cd bots/burgerbot
+            cd burgerbot
+            git pull
+            cd ../bots/burgerbot
             ./restart.sh
