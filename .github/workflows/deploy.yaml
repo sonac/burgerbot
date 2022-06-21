@@ -22,3 +22,4 @@ jobs:
             cp ~/burgerbot/burgerbot.py burgerbot.py
             source .env
             nohup /root/.poetry/bin/poetry run python burgerbot.py > log.txt &
+            echo 'done'
