@@ -21,4 +21,4 @@ jobs:
             ps aux | grep burgerbot | grep -v grep | awk '{print $2}' | xargs -r kill -9
             cp ~/burgerbot/burgerbot.py burgerbot.py
             source .env
-            nohup poetry run python burgerbot.py > log.txt &
+            nohup /root/.poetry/bin/poetry run python burgerbot.py > log.txt &
