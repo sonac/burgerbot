@@ -23,9 +23,9 @@ register_prefix = 'https://service.berlin.de'
 
 service_map = {
     120686: 'Anmeldung',
-    120680: 'Beglaubigungen',
+    121701: 'Beglaubigung von Kopien',
     120701: 'Personalausweis beantragen',
-    121151: 'Reisepass beantragen',
+    120703: 'Reisepass beantragen',
     121921: 'Gewerbeanmeldung',
     327537: 'Fahrerlaubnis - Umschreibung einer ausländischen',
     324280: 'Niederlassungserlaubnis oder Erlaubnis',
