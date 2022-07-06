@@ -4,7 +4,6 @@ import json
 import threading
 import logging
 import sys
-import queue
 from dataclasses import dataclass, asdict
 from typing import List
 from datetime import datetime 
