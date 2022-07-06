@@ -1,7 +1,7 @@
 import time
 import logging
 from dataclasses import dataclass
-from typing import List 
+from typing import List
 from re import S
 
 import requests
@@ -27,9 +27,14 @@ class Parser:
     self.parse()
 
   def __get_url(self, url) -> requests.Response:
-    if self.proxy_on:
-      return requests.get(url, proxies={'https': 'socks5://127.0.0.1:9050'})
-    return requests.get(url)
+    try:
+      if self.proxy_on:
+        return requests.get(url, proxies={'https': 'socks5://127.0.0.1:9050'})
+      return requests.get(url)
+    except ConnectionResetError as err:
+      logging.warn('received an error from the server, waiting for 1 minute before retry')
+      time.sleep(60)
+      return self.__get_url(url)
 
   def __toggle_proxy(self) -> None:
     self.proxy_on = not self.proxy_on
