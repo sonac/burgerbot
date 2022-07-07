@@ -183,8 +183,8 @@ class Bot:
       try:
         self.updater.bot.send_message(chat_id=u.chat_id, text=md_msg, parse_mode=ParseMode.MARKDOWN_V2)
       except Exception as e:
-        if 'bot was blocked by the user' in e.__str__():
-          logging.info('removing since user blocked bot')
+        if 'bot was blocked by the user' in e.__str__() or 'user is deactivated' in e.__str__():
+          logging.info('removing since user blocked bot or user was deactivated')
           self.__remove_chat(u.chat_id)
         else:
           logging.warning(e)
