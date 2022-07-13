@@ -31,8 +31,9 @@ class Parser:
       if self.proxy_on:
         return requests.get(url, proxies={'https': 'socks5://127.0.0.1:9050'})
       return requests.get(url)
-    except ConnectionResetError as err:
+    except Exception as err:
       logging.warn('received an error from the server, waiting for 1 minute before retry')
+      logging.warn(err)
       time.sleep(60)
       return self.__get_url(url)
 
