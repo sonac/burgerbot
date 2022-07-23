@@ -162,7 +162,12 @@ class Bot:
       update.message.reply_text("Wrong usage. Please type '/remove_service 123456'")
 
   def __poll(self) -> None:
-    self.updater.start_polling()
+    try:
+      self.updater.start_polling()
+    except Exception as e:
+      logging.warn(e)
+      logging.warn("got error during polling, retying")
+      return self.__poll()
 
   def __parse(self) -> None:
     while True:
