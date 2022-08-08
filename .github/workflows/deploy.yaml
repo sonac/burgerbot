@@ -19,9 +19,5 @@ jobs:
           script: |
             cd burgerbot
             git pull
-            cd ../bots/burgerbot
-            ps aux | grep burgerbot | grep -v grep | awk '{print $2}' | xargs -r kill -9
-            cp ~/burgerbot/burgerbot.py burgerbot.py
-            source .env
-            nohup /root/.poetry/bin/poetry run python burgerbot.py > log.txt &
+            systemctl restart burgerbot
             echo 'done'
