@@ -111,7 +111,7 @@ class Bot:
     services_text = ""
     for k, v in service_map.items():
       services_text += f"{k} - {v}\n"
-    update.message.reply_text("Example available services:\n" + services_text)
+    update.message.reply_text("Example of available services:\n" + services_text)
 
   def __help(self, update: Update, _: CallbackContext) -> None:
     try:
