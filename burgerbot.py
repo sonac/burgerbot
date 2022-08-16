@@ -143,7 +143,7 @@ class Bot:
         if u.chat_id == update.message.chat_id
       )
       msg = "\n".join([f" - {service_id}" for service_id in service_ids]) or " - (none)"
-      update.message.reply_text("you are subscribed the following services:\n" + msg)
+      update.message.reply_text("The following services are on your list:\n" + msg)
     except Exception as e:
       logging.error(e)
 
