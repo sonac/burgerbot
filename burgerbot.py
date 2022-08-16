@@ -137,13 +137,13 @@ class Bot:
 
   def __my_services(self, update: Update, _: CallbackContext) -> None:
     try:
-      ids = "\n".join([
-        f" - {service_id}"
-        for u in self.users
+      service_ids = set(
+        service_id for u in self.users
         for service_id in u.services
         if u.chat_id == update.message.chat_id
-      ]) or " - (none)"
-      update.message.reply_text("you are subscribed the following services:\n" + ids)
+      )
+      msg = "\n".join([f" - {service_id}" for service_id in service_ids]) or " - (none)"
+      update.message.reply_text("you are subscribed the following services:\n" + msg)
     except Exception as e:
       logging.error(e)
 
