@@ -111,7 +111,7 @@ class Bot:
     services_text = ""
     for k, v in service_map.items():
       services_text += f"{k} - {v}\n"
-    update.message.reply_text("Available services:\n" + services_text)
+    update.message.reply_text("Example available services:\n" + services_text)
 
   def __help(self, update: Update, _: CallbackContext) -> None:
     try:
@@ -120,7 +120,8 @@ class Bot:
 /stop - stop the bot
 /add_service <service_id> - add service to your list
 /remove_service <service_id> - remove service from your list
-/services - list of available services
+/my_services - view services on your list
+/services - non-exhaustive list of available services
 """)
     except Exception as e:
       logging.error(e)
@@ -133,6 +134,18 @@ class Bot:
   def __stop(self, update: Update, _: CallbackContext) -> None:
     self.__remove_chat(update.message.chat_id)
     update.message.reply_text('Thanks for using me! Bye!')
+
+  def __my_services(self, update: Update, _: CallbackContext) -> None:
+    try:
+      ids = "\n".join([
+        f" - {service_id}"
+        for u in self.users
+        for service_id in u.services
+        if u.chat_id == update.message.chat_id
+      ]) or " - (none)"
+      update.message.reply_text("you are subscribed the following services:\n" + ids)
+    except Exception as e:
+      logging.error(e)
 
   def __add_service(self, update: Update, _: CallbackContext) -> None:
     logging.info(f'adding service {update.message}')
