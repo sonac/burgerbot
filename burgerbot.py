@@ -121,7 +121,7 @@ class Bot:
 /add_service <service_id> - add service to your list
 /remove_service <service_id> - remove service from your list
 /my_services - view services on your list
-/services - non-exhaustive list of available services
+/services - list of available services
 """)
     except Exception as e:
       logging.error(e)
