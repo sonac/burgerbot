@@ -68,6 +68,7 @@ class Bot:
     self.dispatcher.add_handler(CommandHandler('stop', self.__stop))
     self.dispatcher.add_handler(CommandHandler('add_service', self.__add_service))
     self.dispatcher.add_handler(CommandHandler('remove_service', self.__remove_service))
+    self.dispatcher.add_handler(CommandHandler('my_services', self.__my_services))
     self.dispatcher.add_handler(CommandHandler('services', self.__services))
     self.cache: List[Message] = []
 
