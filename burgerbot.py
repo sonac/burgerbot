@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 
-import time
-import os
 import json
-import threading
 import logging
+import os
 import sys
+import threading
+import time
 from dataclasses import dataclass, asdict
-from typing import List
 from datetime import datetime
+from typing import List, Any
 
 from telegram import ParseMode
 from telegram.ext import CommandHandler, Updater
@@ -49,11 +49,11 @@ class User:
     chat_id: int
     services: List[int]
 
-    def __init__(self, chat_id, services=[120686]):
+    def __init__(self, chat_id, services=(120686,)):
         self.chat_id = chat_id
         self.services = services if len(services) > 0 else [120686]
 
-    def marshall_user(self) -> str:
+    def marshall_user(self) -> dict[str, Any]:
         self.services = list(set([s for s in self.services if s in list(service_map.keys())]))
         return asdict(self)
 
@@ -82,12 +82,14 @@ class Bot:
         services = filter(lambda x: x in service_map.keys(), services)
         return list(set(services))
 
-    def __init_chats(self) -> None:
+    @staticmethod
+    def __init_chats() -> None:
         if not os.path.exists(CHATS_FILE):
             with open(CHATS_FILE, "w") as f:
                 f.write("[]")
 
-    def __get_chats(self) -> List[User]:
+    @staticmethod
+    def __get_chats() -> List[User]:
         with open(CHATS_FILE, 'r') as f:
             users = [User(u['chat_id'], u['services']) for u in json.load(f)]
             f.close()
@@ -110,13 +112,15 @@ class Bot:
         self.users = [u for u in self.users if u.chat_id != chat_id]
         self.__persist_chats()
 
-    def __services(self, update: Update, _: CallbackContext) -> None:
+    @staticmethod
+    def __services(update: Update, _: CallbackContext) -> None:
         services_text = ""
         for k, v in service_map.items():
             services_text += f"{k} - {v}\n"
         update.message.reply_text("Available services:\n" + services_text)
 
-    def __help(self, update: Update, _: CallbackContext) -> None:
+    @staticmethod
+    def __help(update: Update, _: CallbackContext) -> None:
         try:
             update.message.reply_text("""
 /start - start the bot
@@ -183,8 +187,8 @@ class Bot:
         try:
             self.updater.start_polling()
         except Exception as e:
-            logging.warn(e)
-            logging.warn("got error during polling, retying")
+            logging.warning(e)
+            logging.warning("got error during polling, retying")
             return self.__poll()
 
     def __parse(self) -> None:
@@ -229,7 +233,8 @@ class Bot:
             logging.info('clearing some messages from cache')
             self.cache = [m for m in self.cache if (cur_ts - m.ts) < 300]
 
-    def __date_from_msg(self, msg: str) -> str:
+    @staticmethod
+    def __date_from_msg(msg: str) -> str:
         msg_arr = msg.split('/')
         logging.info(msg)
         ts = int(msg_arr[len(msg_arr) - 2]) + 7200  # adding two hours to match Berlin TZ with UTC

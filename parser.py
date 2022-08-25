@@ -44,15 +44,15 @@ class Parser:
                 return requests.get(url, proxies={'https': 'socks5://127.0.0.1:9050'})
             return requests.get(url)
         except Exception as err:
-            logging.warn('received an error from the server, waiting for 1 minute before retry')
-            logging.warn(err)
+            logging.warning('received an error from the server, waiting for 1 minute before retry')
+            logging.warning(err)
             time.sleep(60)
             return self.__get_url(url)
 
     def __toggle_proxy(self) -> None:
         self.proxy_on = not self.proxy_on
 
-    def __parse_page(self, page, service_id) -> List[str]:
+    def __parse_page(self, page, service_id) -> list[Slot] | None:
         try:
             if page.status_code == 428:
                 logging.info('exceeded rate limit. Sleeping for a while')
@@ -68,13 +68,13 @@ class Parser:
                 logging.info("no luck yet")
             return [Slot(slot.a['href'], service_id) for slot in slots]
         except Exception as e:  # sometimes shit happens
-            logging.warn(e)
+            logging.warning(e)
             self.__toggle_proxy()
 
     def add_service(self, service_id: int) -> None:
         self.services.append(service_id)
 
-    def parse(self) -> List[str]:
+    def parse(self) -> List[Slot]:
         slots = []
         logging.info('services are: ' + str(self.services))
         for svc in self.services:
