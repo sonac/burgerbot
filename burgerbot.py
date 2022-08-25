@@ -70,6 +70,7 @@ class Bot:
     self.dispatcher.add_handler(CommandHandler('stop', self.__stop))
     self.dispatcher.add_handler(CommandHandler('add_service', self.__add_service))
     self.dispatcher.add_handler(CommandHandler('remove_service', self.__remove_service))
+    self.dispatcher.add_handler(CommandHandler('my_services', self.__my_services))
     self.dispatcher.add_handler(CommandHandler('services', self.__services))
     self.cache: List[Message] = []
 
@@ -122,6 +123,7 @@ class Bot:
 /stop - stop the bot
 /add_service <service_id> - add service to your list
 /remove_service <service_id> - remove service from your list
+/my_services - view services on your list
 /services - list of available services
 """)
     except Exception as e:
@@ -135,6 +137,18 @@ class Bot:
   def __stop(self, update: Update, _: CallbackContext) -> None:
     self.__remove_chat(update.message.chat_id)
     update.message.reply_text('Thanks for using me! Bye!')
+
+  def __my_services(self, update: Update, _: CallbackContext) -> None:
+    try:
+      service_ids = set(
+        service_id for u in self.users
+        for service_id in u.services
+        if u.chat_id == update.message.chat_id
+      )
+      msg = "\n".join([f" - {service_id}" for service_id in service_ids]) or " - (none)"
+      update.message.reply_text("The following services are on your list:\n" + msg)
+    except Exception as e:
+      logging.error(e)
 
   def __add_service(self, update: Update, _: CallbackContext) -> None:
     logging.info(f'adding service {update.message}')
