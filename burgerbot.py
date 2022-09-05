@@ -36,6 +36,7 @@ service_map = {
     121598: 'Fahrerlaubnis - Umschreibung einer ausländischen Fahrerlaubnis aus einem EU-/EWR-Staat',
     120914: 'Zulassung eines Fahrzeuges mit auswärtigem Kennzeichen mit Halterwechsel',
     121627: 'Fahrerlaubnis - Ersterteilung beantragen',
+    120335: 'Abmeldung einer Wohnung',
 }
 
 @dataclass
