@@ -11,10 +11,13 @@ from datetime import datetime
 from parser import Parser, Slot
 from typing import Any, List
 
+from dotenv import load_dotenv
 from telegram import ParseMode
 from telegram.ext import CommandHandler, Updater
 from telegram.ext.callbackcontext import CallbackContext
 from telegram.update import Update
+
+load_dotenv()
 
 CHATS_FILE = "chats.json"
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
@@ -70,8 +73,7 @@ class Bot:
         self.updater = Updater(TELEGRAM_API_KEY)
         self.__init_chats()
         self.users = self.__get_chats()
-        self.services = self.__get_uq_services()
-        self.parser = Parser(self.services)
+        self.parser = Parser()
         self.dispatcher = self.updater.dispatcher
         self.dispatcher.add_handler(CommandHandler("help", self.__help))
         self.dispatcher.add_handler(CommandHandler("start", self.__start))
@@ -201,11 +203,17 @@ class Bot:
         logging.info(f"adding service {update.message}")
         try:
             service_id = int(update.message.text.split(" ")[1])
+
+            if service_id not in service_map.keys():
+                update.message.reply_text("Service not found")
+                return
+
             for u in self.users:
                 if u.chat_id == update.message.chat_id:
-                    u.services.append(int(service_id))
+                    u.services.append(service_id)
                     self.__persist_chats()
                     break
+
             update.message.reply_text("Service added")
         except Exception as e:
             update.message.reply_text(
@@ -240,14 +248,14 @@ class Bot:
         try:
             self.updater.start_polling()
         except Exception as e:
-            logging.warn(e)
-            logging.warn("got error during polling, retying")
+            logging.warning("got error during polling, retrying: %s", e)
             return self.__poll()
 
     def __parse(self) -> None:
         while True:
             logging.debug("starting parse run")
-            slots = self.parser.parse()
+            services = self.__get_uq_services()
+            slots = self.parser.parse(services)
             for slot in slots:
                 self.__send_message(slot)
             time.sleep(30)
@@ -255,6 +263,7 @@ class Bot:
     def __send_message(self, slot: Slot) -> None:
         if self.__msg_in_cache(slot.result.url):
             logging.info("Notification is cached already. Do not repeat sending")
+            self.__clear_cache()
             return
         self.__add_msg_to_cache(slot.result.url)
         md_msg = f"There are slots on {self.__date_from_msg(slot.result.date)} available for booking for {service_map[slot.service.id]}, click [here]({slot.service.url}) to check it out"
@@ -275,7 +284,7 @@ class Bot:
                     )
                     self.__remove_chat(u.chat_id)
                 else:
-                    logging.warning(e)
+                    logging.warning("error sending message: %s", e)
         self.__clear_cache()
 
     def __msg_in_cache(self, msg: str) -> bool:
@@ -290,8 +299,11 @@ class Bot:
     def __clear_cache(self) -> None:
         cur_ts = int(time.time())
         if len(self.cache) > 0:
-            logging.info("clearing some messages from cache")
-            self.cache = [m for m in self.cache if (cur_ts - m.ts) < 300]
+            new_cache = [m for m in self.cache if (cur_ts - m.ts) < 300]
+
+            if len(self.cache) != len(new_cache):
+                logging.info("clearing some messages from cache")
+                self.cache = new_cache
 
     def __date_from_msg(self, date: datetime) -> str:
         return date.strftime("%d %B")

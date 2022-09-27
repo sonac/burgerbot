@@ -26,9 +26,15 @@ poetry install
 
 ### Environment Variables
 
-`TELEGRAM_API_KEY` (required): API key for your Telegram bot.
+`TELEGRAM_API_KEY` (required): API key for your Telegram bot. More information [here](https://core.telegram.org/bots).
 `LOG_LEVEL` (optional): Set logging level. Available options [here](https://docs.python.org/3/library/logging.html#levels).
 
 ### Proxy
 
 Sometimes we get rate limited, so we can use a proxy to try and dodge it. Setting up a proxy on `127.0.0.1:9050` will do the job.
+
+## Running
+
+```
+python3 ./burgerbot.py
+```
