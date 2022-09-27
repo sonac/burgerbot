@@ -8,7 +8,6 @@ import threading
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from parser import Parser, Slot
 from typing import Any, Dict, List
 
 from telegram import ParseMode
@@ -16,26 +15,11 @@ from telegram.ext import CommandHandler, Updater
 from telegram.ext.callbackcontext import CallbackContext
 from telegram.update import Update
 
-from config import Config
-from fetcher import Fetcher
-
-service_map = {
-    120335: "Abmeldung einer Wohnung",
-    120686: "Anmeldung",
-    120701: "Personalausweis beantragen",
-    120702: "Meldebescheinigung beantragen",
-    120703: "Reisepass beantragen",
-    120914: "Zulassung eines Fahrzeuges mit auswärtigem Kennzeichen mit Halterwechsel",
-    121469: "Kinderreisepass beantragen / verlängern / aktualisieren",
-    121598: "Fahrerlaubnis - Umschreibung einer ausländischen Fahrerlaubnis aus einem EU-/EWR-Staat",
-    121627: "Fahrerlaubnis - Ersterteilung beantragen",
-    121701: "Beglaubigung von Kopien",
-    121921: "Gewerbeanmeldung",
-    318998: "Einbürgerung - Verleihung der deutschen Staatsangehörigkeit beantragen",
-    324280: "Niederlassungserlaubnis oder Erlaubnis",
-    326798: "Blaue Karte EU auf einen neuen Pass übertragen",
-    327537: "Fahrerlaubnis - Umschreibung einer ausländischen",
-}
+from burgerbot.config import Config
+from burgerbot.fetcher import LiveFetcher
+from burgerbot.model import Slot
+from burgerbot.parser import Parser
+from burgerbot.services import ServicesManager
 
 
 @dataclass
@@ -53,19 +37,21 @@ class User:
         self.chat_id = chat_id
         self.services = services
 
-    def marshall_user(self) -> dict[str, Any]:
-        self.services = list(
-            set([s for s in self.services if s in list(service_map.keys())])
-        )
+    def marshall_user(self, valid_service_ids: List[int]) -> dict[str, Any]:
+        self.services = list(set([s for s in self.services if s in valid_service_ids]))
         return asdict(self)
 
 
 class Bot:
     def __init__(self, bot_email: str, bot_id: str, telegram_api_key: str) -> None:
+        self.services_manager = ServicesManager(Config.services_file)
         self.updater = Updater(telegram_api_key)
         self.__init_chats()
         self.users = self.__get_chats()
-        self.parser = Parser(Fetcher(bot_email=bot_email, bot_id=bot_id))
+        self.parser = Parser(
+            fetcher=LiveFetcher(bot_email=bot_email, bot_id=bot_id),
+            services=self.services_manager.services,
+        )
         self.dispatcher = self.updater.dispatcher
         self.dispatcher.add_handler(CommandHandler("help", self.__help))
         self.dispatcher.add_handler(CommandHandler("start", self.__start))
@@ -82,7 +68,9 @@ class Bot:
         services: List[int] = []
         for u in self.users:
             services.extend(u.services)
-        services = list(filter(lambda x: x in service_map.keys(), services))
+        services = list(
+            filter(lambda x: x in self.services_manager.service_ids, services)
+        )
         return list(set(services))
 
     def __init_chats(self) -> None:
@@ -99,7 +87,13 @@ class Bot:
 
     def __persist_chats(self) -> None:
         with open(Config.chats_file, "w") as f:
-            json.dump([u.marshall_user() for u in self.users], f)
+            json.dump(
+                [
+                    u.marshall_user(self.services_manager.service_ids)
+                    for u in self.users
+                ],
+                f,
+            )
             f.close()
 
     def __add_chat(self, chat_id: int) -> None:
@@ -119,8 +113,8 @@ class Bot:
             return
 
         services_text = ""
-        for k, v in service_map.items():
-            services_text += f"{k} - {v}\n"
+        for service in self.services_manager.services:
+            services_text += f"{service.id} - {service.title}\n"
         update.message.reply_text("Available services:\n" + services_text)
 
     def __help(self, update: Update, _: CallbackContext) -> None:
@@ -196,7 +190,7 @@ class Bot:
         try:
             service_id = int(update.message.text.split(" ")[1])
 
-            if service_id not in service_map.keys():
+            if service_id not in self.services_manager.service_ids:
                 update.message.reply_text("Service not found")
                 return
 
@@ -273,8 +267,8 @@ class Bot:
             self.__clear_cache()
             time.sleep(Config.refresh_interval)
 
-    def __build_service_markdown(self, service: int, slots: List[Slot]) -> str:
-        slots_for_service = [s for s in slots if s.service.id == service]
+    def __build_service_markdown(self, service_id: int, slots: List[Slot]) -> str:
+        slots_for_service = [s for s in slots if s.service.id == service_id]
         slots_for_service.sort(key=lambda x: x.result.date)
 
         slot_markdowns: List[str] = []
@@ -286,7 +280,9 @@ class Bot:
 
         slot_markdown = "\n".join(slot_markdowns)
 
-        service_markdown: str = f"*{service_map[service]}*\n\n{slot_markdown}"
+        service_markdown: str = (
+            f"*{self.services_manager.get(service_id).title}*\n\n{slot_markdown}"
+        )
 
         return service_markdown
 

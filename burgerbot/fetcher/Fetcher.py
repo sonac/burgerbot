@@ -1,0 +1,3 @@
+class Fetcher:
+    def fetch(self, url: str) -> bytes:
+        ...

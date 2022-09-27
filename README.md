@@ -13,8 +13,6 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -U pip setuptools
 pip install poetry
-poetry install
-pre-commit install
 ```
 
 ### Initialise Development Environment
@@ -22,13 +20,14 @@ pre-commit install
 ```
 source .venv/bin/activate
 poetry install
+pre-commit install
 ```
 
 ### Environment Variables
 
 `TELEGRAM_API_KEY` (required): API key for your Telegram bot. More information [here](https://core.telegram.org/bots).
-`BOOKING_EMAIL` (required): Email addressed used in request headers to identify bot.
-`BOOKING_ID` (required): Unique string used in request headers to identify bot.
+`BOT_EMAIL` (required): Email addressed used in request headers to identify bot.
+`BOT_ID` (required): Unique string used in request headers to identify bot.
 `LOG_LEVEL` (optional): Set logging level. Available options [here](https://docs.python.org/3/library/logging.html#levels).
 
 ### Proxy
@@ -38,7 +37,7 @@ Sometimes we get rate limited, so we can use a proxy to try and dodge it. Settin
 ## Running
 
 ```
-python3 ./burgerbot.py
+python3 ./burgerbot/bot.py
 ```
 
 ## Acknowledgements

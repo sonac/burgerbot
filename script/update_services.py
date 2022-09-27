@@ -2,16 +2,16 @@
 
 import logging
 import sys
-import time
-from parser import ServiceParser
 from typing import List
 
-from config import Config
-from fetcher import Fetcher
-from services import Service, supported_services
+from burgerbot.config import Config
+from burgerbot.parser import ServiceParser
+from burgerbot.services import Service, ServicesManager, supported_services
+from tests.FixtureFetcher import FixtureFetcher
 
-fetcher = Fetcher(bot_email=Config.bot_email, bot_id=Config.bot_id)
-parser = ServiceParser(fetcher=fetcher)
+fixture_fetcher = FixtureFetcher()
+parser = ServiceParser(fetcher=fixture_fetcher)
+manager = ServicesManager(filename=Config.services_file)
 
 
 def main() -> None:
@@ -21,11 +21,12 @@ def main() -> None:
         try:
             service = parser.parse(service_id=service_id)
             services.append(service)
-            time.sleep(2)
         except Exception as e:
             logging.warning("could not fetch service %d: %s", service_id, e)
 
-    print(services)
+    manager.save(services=services)
+
+    print(f"...done, written to {manager.filename}")
 
 
 if __name__ == "__main__":

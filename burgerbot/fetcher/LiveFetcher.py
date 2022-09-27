@@ -4,21 +4,21 @@ from typing import Optional
 
 import requests
 
+from burgerbot.fetcher.Fetcher import Fetcher
+from burgerbot.fetcher.RateLimitedException import RateLimitedException
 
-class RateLimitedException(Exception):
-    pass
 
-
-class Fetcher:
+class LiveFetcher(Fetcher):
     proxy: Optional[str]
 
     def __init__(self, bot_email: str, bot_id: str) -> None:
         # self.proxy = "socks5://127.0.0.1:9050"
+        self.proxy = None
 
         self.bot_email = bot_email
         self.bot_id = bot_id
 
-    def fetch(self, url: str) -> requests.Response:
+    def fetch(self, url: str) -> bytes:
         logging.debug(f"Fetching {url}")
 
         headers = {
@@ -33,13 +33,17 @@ class Fetcher:
         try:
             if self.proxy is not None:
                 proxies = {"http": self.proxy, "https": self.proxy}
+            else:
+                proxies = None
 
             response = requests.get(url, headers=headers, proxies=proxies)
 
             if response.status_code in [428, 429]:
                 raise RateLimitedException(response)
 
-            return response
+            response.raise_for_status()
+
+            return response.content
         except Exception as err:
             logging.warning(
                 "received an error from the server: %s",

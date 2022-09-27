@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 CHATS_FILE = "chats.json"
+SERVICES_FILE = "services.json"
 REFRESH_INTERVAL = (
     180  # minimum of 3 minutes is considered acceptable by berlin.de staff
 )
@@ -20,6 +21,10 @@ class MetaConfig(type):
     @property
     def chats_file(cls):
         return CHATS_FILE
+
+    @property
+    def services_file(cls):
+        return SERVICES_FILE
 
     @property
     def refresh_interval(cls):
