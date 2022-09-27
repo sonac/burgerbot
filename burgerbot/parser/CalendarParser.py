@@ -107,6 +107,8 @@ class CalendarParser:
         today = datetime.now(pytz.utc).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
+
+        # TODO: this would be nice to configure per-service, i.e. wait times for citizenship is different than wait times for an anmeldung
         in_two_months = today + relativedelta.relativedelta(months=2, day=1)
         in_two_months_timestamp = int(mktime(in_two_months.timetuple()))
         page_2_url = f"https://service.berlin.de/terminvereinbarung/termin/day/{in_two_months_timestamp}/"
