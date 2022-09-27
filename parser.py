@@ -1,8 +1,8 @@
-import time
 import logging
+import time
 from dataclasses import dataclass
-from typing import List
 from re import S
+from typing import List
 
 import requests
 from bs4 import BeautifulSoup

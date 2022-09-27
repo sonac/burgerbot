@@ -13,7 +13,11 @@ python-telegram-bot = "^13.7"
 [tool.poetry.group.dev.dependencies]
 black = "^22.8.0"
 pre-commit = "^2.20.0"
+isort = "^5.10.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"

@@ -1,22 +1,20 @@
 #!/usr/bin/env python
 
-import time
-import os
 import json
-import threading
 import logging
+import os
 import sys
-from dataclasses import dataclass, asdict
-from typing import List
+import threading
+import time
+from dataclasses import asdict, dataclass
 from datetime import datetime
+from parser import Parser, Slot, build_url
+from typing import List
 
 from telegram import ParseMode
 from telegram.ext import CommandHandler, Updater
 from telegram.ext.callbackcontext import CallbackContext
 from telegram.update import Update
-
-from parser import Parser, Slot, build_url
-
 
 CHATS_FILE = "chats.json"
 ua_url = "https://service.berlin.de/terminvereinbarung/termin/tag.php?termin=1&dienstleister=330857&anliegen[]=330869&herkunft=1"
