@@ -9,7 +9,7 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from parser import Parser, Slot, build_url
-from typing import List
+from typing import Any, List
 
 from telegram import ParseMode
 from telegram.ext import CommandHandler, Updater
@@ -17,13 +17,12 @@ from telegram.ext.callbackcontext import CallbackContext
 from telegram.update import Update
 
 CHATS_FILE = "chats.json"
-ua_url = "https://service.berlin.de/terminvereinbarung/termin/tag.php?termin=1&dienstleister=330857&anliegen[]=330869&herkunft=1"
-register_prefix = "https://service.berlin.de"
 
 service_map = {
     120335: "Abmeldung einer Wohnung",
     120686: "Anmeldung",
     120701: "Personalausweis beantragen",
+    120702: "Meldebescheinigung beantragen",
     120703: "Reisepass beantragen",
     120914: "Zulassung eines Fahrzeuges mit auswärtigem Kennzeichen mit Halterwechsel",
     121469: "Kinderreisepass beantragen / verlängern / aktualisieren",
@@ -49,11 +48,11 @@ class User:
     chat_id: int
     services: List[int]
 
-    def __init__(self, chat_id, services=[120686]):
+    def __init__(self, chat_id, services=[120686]) -> None:
         self.chat_id = chat_id
         self.services = services if len(services) > 0 else [120686]
 
-    def marshall_user(self) -> str:
+    def marshall_user(self) -> dict[str, Any]:
         self.services = list(
             set([s for s in self.services if s in list(service_map.keys())])
         )
@@ -80,10 +79,10 @@ class Bot:
         self.cache: List[Message] = []
 
     def __get_uq_services(self) -> List[int]:
-        services = []
+        services: List[int] = []
         for u in self.users:
             services.extend(u.services)
-        services = filter(lambda x: x in service_map.keys(), services)
+        services = list(filter(lambda x: x in service_map.keys(), services))
         return list(set(services))
 
     def __init_chats(self) -> None:
@@ -115,12 +114,20 @@ class Bot:
         self.__persist_chats()
 
     def __services(self, update: Update, _: CallbackContext) -> None:
+        if update.message is None:
+            logging.info("update.message is None, bailing early")
+            return
+
         services_text = ""
         for k, v in service_map.items():
             services_text += f"{k} - {v}\n"
         update.message.reply_text("Available services:\n" + services_text)
 
     def __help(self, update: Update, _: CallbackContext) -> None:
+        if update.message is None:
+            logging.info("update.message is None, bailing early")
+            return
+
         try:
             update.message.reply_text(
                 """
@@ -136,6 +143,10 @@ class Bot:
             logging.error(e)
 
     def __start(self, update: Update, _: CallbackContext) -> None:
+        if update.message is None:
+            logging.info("update.message is None, bailing early")
+            return
+
         self.__add_chat(update.message.chat_id)
         logging.info(f"got new user with id {update.message.chat_id}")
         update.message.reply_text(
@@ -143,10 +154,18 @@ class Bot:
         )
 
     def __stop(self, update: Update, _: CallbackContext) -> None:
+        if update.message is None:
+            logging.info("update.message is None, bailing early")
+            return
+
         self.__remove_chat(update.message.chat_id)
         update.message.reply_text("Thanks for using me! Bye!")
 
     def __my_services(self, update: Update, _: CallbackContext) -> None:
+        if update.message is None:
+            logging.info("update.message is None, bailing early")
+            return
+
         try:
             service_ids = set(
                 service_id
@@ -165,6 +184,14 @@ class Bot:
             logging.error(e)
 
     def __add_service(self, update: Update, _: CallbackContext) -> None:
+        if update.message is None:
+            logging.info("update.message is None, bailing early")
+            return
+
+        if update.message.text is None:
+            logging.info("update.message.text is None, bailing early")
+            return
+
         logging.info(f"adding service {update.message}")
         try:
             service_id = int(update.message.text.split(" ")[1])
@@ -181,6 +208,14 @@ class Bot:
             logging.error(e)
 
     def __remove_service(self, update: Update, _: CallbackContext) -> None:
+        if update.message is None:
+            logging.info("update.message is None, bailing early")
+            return
+
+        if update.message.text is None:
+            logging.info("update.message.text is None, bailing early")
+            return
+
         logging.info(f"removing service {update.message}")
         try:
             service_id = int(update.message.text.split(" ")[1])

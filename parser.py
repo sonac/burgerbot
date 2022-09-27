@@ -2,20 +2,33 @@ import logging
 import time
 from dataclasses import dataclass
 from re import S
-from typing import List
+from typing import List, Optional
 
 import requests
 from bs4 import BeautifulSoup
 
-default_url = "https://service.berlin.de/terminvereinbarung/termin/tag.php?termin=0&anliegen[]={}&dienstleisterlist=122210,122217,327316,122219,327312,122227,327314,122231,327346,122243,327348,122252,329742,122260,329745,122262,329748,122254,329751,122271,327278,122273,327274,122277,327276,330436,122280,327294,122282,327290,122284,327292,327539,122291,327270,122285,327266,122286,327264,122296,327268,150230,329760,122301,327282,122297,327286,122294,327284,122312,329763,122314,329775,122304,327330,122311,327334,122309,327332,122281,327352,122279,329772,122276,327324,122274,327326,122267,329766,122246,327318,122251,327320,122257,327322,122208,327298,122226,327300,121362,121364&herkunft=http%3A%2F%2Fservice.berlin.de%2Fdienstleistung%2F120686%2F"
-
+# we will try to detect URLs where possible and cache them, but these can be used as a fallback
+default_dienstlisterlist = "122210,122217,327316,122219,327312,122227,327314,122231,327346,122243,327348,122252,329742,122260,329745,122262,329748,122254,329751,122271,327278,122273,327274,122277,327276,330436,122280,327294,122282,327290,122284,327292,327539,122291,327270,122285,327266,122286,327264,122296,327268,150230,329760,122301,327282,122297,327286,122294,327284,122312,329763,122314,329775,122304,327330,122311,327334,122309,327332,122281,327352,122279,329772,122276,327324,122274,327326,122267,329766,122246,327318,122251,327320,122257,327322,122208,327298,122226,327300,121362,121364"
+default_url = "https://service.berlin.de/terminvereinbarung/termin/tag.php?termin=0&anliegen[]={id}&dienstleisterlist={dienstleisterlist}&herkunft=http%3A%2F%2Fservice.berlin.de%2Fdienstleistung%2F120686%2F"
 naturalization_url = "https://service.berlin.de/terminvereinbarung/termin/tag.php?termin=1&dienstleister=324261&anliegen[]=318998&herkunft=1"
+
+service_url = "https://service.berlin.de/dienstleistung/{id}/"
+
+service_urls: dict[int, str] = {}
+
+
+def build_default_url(id: int) -> str:
+    if id == 318998:
+        return naturalization_url.format(id)
+    return default_url.format(id=id, dienstleisterlist=default_dienstlisterlist)
 
 
 def build_url(id: int) -> str:
-    if id == 318998:
-        return naturalization_url.format(id)
-    return default_url.format(id)
+    if id not in service_urls:
+        # try to detect the URL from the service page
+        url = service_url.format(id=id)
+
+    return service_urls[id] or build_default_url(id)
 
 
 @dataclass
@@ -30,7 +43,7 @@ class Parser:
         self.proxy_on: bool = False
         self.parse()
 
-    def __get_url(self, url) -> requests.Response:
+    def __get_url(self, url: str) -> requests.Response:
         logging.debug(url)
         try:
             if self.proxy_on:
@@ -47,13 +60,13 @@ class Parser:
     def __toggle_proxy(self) -> None:
         self.proxy_on = not self.proxy_on
 
-    def __parse_page(self, page, service_id) -> List[str]:
+    def __parse_page(self, page: requests.Response, service_id: int) -> List[Slot]:
         try:
             if page.status_code == 428:
                 logging.info("exceeded rate limit. Sleeping for a while")
                 time.sleep(299)
                 self.__toggle_proxy()
-                return None
+                return []
             soup = BeautifulSoup(page.content, "html.parser")
             slots = soup.find_all("td", class_="buchbar")
             is_valid = soup.find_all("td", class_="nichtbuchbar")
@@ -62,15 +75,18 @@ class Parser:
             if len(slots) == 0:
                 logging.info("no luck yet")
             return [Slot(slot.a["href"], service_id) for slot in slots]
+
         except Exception as e:  ## sometimes shit happens
             logging.warn(e)
             self.__toggle_proxy()
 
+        return []
+
     def add_service(self, service_id: int) -> None:
         self.services.append(service_id)
 
-    def parse(self) -> List[str]:
-        slots = []
+    def parse(self) -> List[Slot]:
+        slots: List[Slot] = []
         logging.info("services are: " + str(self.services))
         for svc in self.services:
             page = self.__get_url(build_url(svc))
