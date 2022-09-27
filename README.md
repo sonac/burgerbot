@@ -27,6 +27,8 @@ poetry install
 ### Environment Variables
 
 `TELEGRAM_API_KEY` (required): API key for your Telegram bot. More information [here](https://core.telegram.org/bots).
+`BOOKING_EMAIL` (required): Email addressed used in request headers to identify bot.
+`BOOKING_ID` (required): Unique string used in request headers to identify bot.
 `LOG_LEVEL` (optional): Set logging level. Available options [here](https://docs.python.org/3/library/logging.html#levels).
 
 ### Proxy
@@ -38,3 +40,7 @@ Sometimes we get rate limited, so we can use a proxy to try and dodge it. Settin
 ```
 python3 ./burgerbot.py
 ```
+
+## Acknowledgements
+
+- [burgeramt-appointments-websockets](https://github.com/nicbou/burgeramt-appointments-websockets) did a lot of the groundwork to determine the base standards - user agent, refresh interval, etc

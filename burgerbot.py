@@ -9,7 +9,7 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from parser import Parser, Slot
-from typing import Any, List
+from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 from telegram import ParseMode
@@ -17,15 +17,18 @@ from telegram.ext import CommandHandler, Updater
 from telegram.ext.callbackcontext import CallbackContext
 from telegram.update import Update
 
+from fetcher import Fetcher
+
 load_dotenv()
 
 CHATS_FILE = "chats.json"
+REFRESH_INTERVAL = (
+    180  # minimum of 3 minutes is considered acceptable by berlin.de staff
+)
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
 TELEGRAM_API_KEY = os.environ.get("TELEGRAM_API_KEY")
-
-if TELEGRAM_API_KEY is None:
-    logging.error("TELEGRAM_API_KEY is not set")
-    sys.exit(1)
+BOT_EMAIL = os.environ.get("BOT_EMAIL")
+BOT_ID = os.environ.get("BOT_ID")
 
 service_map = {
     120335: "Abmeldung einer Wohnung",
@@ -69,11 +72,11 @@ class User:
 
 
 class Bot:
-    def __init__(self) -> None:
-        self.updater = Updater(TELEGRAM_API_KEY)
+    def __init__(self, bot_email: str, bot_id: str, telegram_api_key: str) -> None:
+        self.updater = Updater(telegram_api_key)
         self.__init_chats()
         self.users = self.__get_chats()
-        self.parser = Parser()
+        self.parser = Parser(Fetcher(bot_email=bot_email, bot_id=bot_id))
         self.dispatcher = self.updater.dispatcher
         self.dispatcher.add_handler(CommandHandler("help", self.__help))
         self.dispatcher.add_handler(CommandHandler("start", self.__start))
@@ -256,36 +259,73 @@ class Bot:
             logging.debug("starting parse run")
             services = self.__get_uq_services()
             slots = self.parser.parse(services)
-            for slot in slots:
-                self.__send_message(slot)
-            time.sleep(30)
 
-    def __send_message(self, slot: Slot) -> None:
-        if self.__msg_in_cache(slot.result.url):
-            logging.info("Notification is cached already. Do not repeat sending")
-            self.__clear_cache()
-            return
-        self.__add_msg_to_cache(slot.result.url)
-        md_msg = f"There are slots on {self.__date_from_msg(slot.result.date)} available for booking for {service_map[slot.service.id]}, click [here]({slot.service.url}) to check it out"
-        users = [u for u in self.users if slot.service.id in u.services]
-        for u in users:
-            logging.debug(f"sending msg to {str(u.chat_id)}")
-            try:
-                self.updater.bot.send_message(
-                    chat_id=u.chat_id, text=md_msg, parse_mode=ParseMode.MARKDOWN_V2
-                )
-            except Exception as e:
-                if (
-                    "bot was blocked by the user" in e.__str__()
-                    or "user is deactivated" in e.__str__()
-                ):
+            users_to_notify: Dict[User, List[Slot]] = {}
+
+            for slot in slots:
+                if self.__msg_in_cache(slot.result.url):
                     logging.info(
-                        "removing since user blocked bot or user was deactivated"
+                        "Notification is cached already. Do not repeat sending"
                     )
-                    self.__remove_chat(u.chat_id)
-                else:
-                    logging.warning("error sending message: %s", e)
-        self.__clear_cache()
+                    continue
+
+                self.__add_msg_to_cache(slot.result.url)
+
+                users = [u for u in self.users if slot.service.id in u.services]
+
+                for user in users:
+                    if user not in users_to_notify:
+                        users_to_notify[user] = []
+                    users_to_notify[user].append(slot)
+
+            for user, slots in users_to_notify.items():
+                self.__send_message(user, slots)
+
+            self.__clear_cache()
+            time.sleep(REFRESH_INTERVAL)
+
+    def __build_service_markdown(self, service: int, slots: List[Slot]) -> str:
+        slots_for_service = [s for s in slots if s.service.id == service]
+        slots_for_service.sort(key=lambda x: x.result.date)
+
+        slot_markdowns: List[str] = []
+
+        for slot in slots_for_service:
+            slot_markdowns.append(
+                f"- [{self.__date_from_msg(slot.result.date)}]({slot.result.url})"
+            )
+
+        slot_markdown = "\n".join(slot_markdowns)
+
+        service_markdown: str = f"*{service_map[service]}*\n\n{slot_markdown}"
+
+        return service_markdown
+
+    def __send_message(self, user: User, slots: List[Slot]) -> None:
+        services_markdowns = [
+            self.__build_service_markdown(service, slots) for service in user.services
+        ]
+        services_markdown = "\n\n".join(services_markdowns)
+        markdown = f"""
+Available appointments found!
+
+{services_markdown}
+        """
+
+        logging.debug(f"sending msg to {str(user.chat_id)}")
+        try:
+            self.updater.bot.send_message(
+                chat_id=user.chat_id, text=markdown, parse_mode=ParseMode.MARKDOWN_V2
+            )
+        except Exception as e:
+            if (
+                "bot was blocked by the user" in e.__str__()
+                or "user is deactivated" in e.__str__()
+            ):
+                logging.info("removing since user blocked bot or user was deactivated")
+                self.__remove_chat(user.chat_id)
+            else:
+                logging.warning("error sending message: %s", e)
 
     def __msg_in_cache(self, msg: str) -> bool:
         for m in self.cache:
@@ -319,7 +359,23 @@ class Bot:
 
 
 def main() -> None:
-    bot = Bot()
+    if TELEGRAM_API_KEY is None:
+        logging.error("TELEGRAM_API_KEY is not set")
+        sys.exit(1)
+
+    if BOT_EMAIL is None:
+        logging.error("BOT_EMAIL is not set")
+        sys.exit(1)
+
+    if BOT_ID is None:
+        logging.error("BOT_ID is not set")
+        sys.exit(1)
+
+    bot = Bot(
+        telegram_api_key=TELEGRAM_API_KEY,
+        bot_email=BOT_EMAIL,
+        bot_id=BOT_ID,
+    )
     bot.start()
 
 
