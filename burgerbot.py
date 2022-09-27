@@ -11,24 +11,13 @@ from datetime import datetime
 from parser import Parser, Slot
 from typing import Any, Dict, List
 
-from dotenv import load_dotenv
 from telegram import ParseMode
 from telegram.ext import CommandHandler, Updater
 from telegram.ext.callbackcontext import CallbackContext
 from telegram.update import Update
 
+from config import Config
 from fetcher import Fetcher
-
-load_dotenv()
-
-CHATS_FILE = "chats.json"
-REFRESH_INTERVAL = (
-    180  # minimum of 3 minutes is considered acceptable by berlin.de staff
-)
-LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
-TELEGRAM_API_KEY = os.environ.get("TELEGRAM_API_KEY")
-BOT_EMAIL = os.environ.get("BOT_EMAIL")
-BOT_ID = os.environ.get("BOT_ID")
 
 service_map = {
     120335: "Abmeldung einer Wohnung",
@@ -97,19 +86,19 @@ class Bot:
         return list(set(services))
 
     def __init_chats(self) -> None:
-        if not os.path.exists(CHATS_FILE):
-            with open(CHATS_FILE, "w") as f:
+        if not os.path.exists(Config.chats_file):
+            with open(Config.chats_file, "w") as f:
                 f.write("[]")
 
     def __get_chats(self) -> List[User]:
-        with open(CHATS_FILE, "r") as f:
+        with open(Config.chats_file, "r") as f:
             users = [User(u["chat_id"], u["services"]) for u in json.load(f)]
             f.close()
             print(users)
             return users
 
     def __persist_chats(self) -> None:
-        with open(CHATS_FILE, "w") as f:
+        with open(Config.chats_file, "w") as f:
             json.dump([u.marshall_user() for u in self.users], f)
             f.close()
 
@@ -282,7 +271,7 @@ class Bot:
                 self.__send_message(user, slots)
 
             self.__clear_cache()
-            time.sleep(REFRESH_INTERVAL)
+            time.sleep(Config.refresh_interval)
 
     def __build_service_markdown(self, service: int, slots: List[Slot]) -> str:
         slots_for_service = [s for s in slots if s.service.id == service]
@@ -359,28 +348,16 @@ Available appointments found!
 
 
 def main() -> None:
-    if TELEGRAM_API_KEY is None:
-        logging.error("TELEGRAM_API_KEY is not set")
-        sys.exit(1)
-
-    if BOT_EMAIL is None:
-        logging.error("BOT_EMAIL is not set")
-        sys.exit(1)
-
-    if BOT_ID is None:
-        logging.error("BOT_ID is not set")
-        sys.exit(1)
-
     bot = Bot(
-        telegram_api_key=TELEGRAM_API_KEY,
-        bot_email=BOT_EMAIL,
-        bot_id=BOT_ID,
+        telegram_api_key=Config.telegram_api_key,
+        bot_email=Config.bot_email,
+        bot_id=Config.bot_id,
     )
     bot.start()
 
 
 if __name__ == "__main__":
-    log_level = LOG_LEVEL
+    log_level = Config.log_level
     logging.basicConfig(
         level=log_level,
         format="%(asctime)s [%(levelname)-5.5s] %(message)s",

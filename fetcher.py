@@ -1,20 +1,22 @@
 import logging
 import time
+from typing import Optional
 
 import requests
 
 
+class RateLimitedException(Exception):
+    pass
+
+
 class Fetcher:
-    proxy_available = False
+    proxy: Optional[str]
 
     def __init__(self, bot_email: str, bot_id: str) -> None:
-        self.proxy_on: bool = False
+        # self.proxy = "socks5://127.0.0.1:9050"
 
         self.bot_email = bot_email
         self.bot_id = bot_id
-
-    def toggle_proxy(self) -> None:
-        self.proxy_on = self.proxy_available and not self.proxy_on
 
     def fetch(self, url: str) -> requests.Response:
         logging.debug(f"Fetching {url}")
@@ -29,23 +31,19 @@ class Fetcher:
         }
 
         try:
-            if self.proxy_on:
-                response = requests.get(
-                    url, proxies={"https": "socks5://127.0.0.1:9050"}, headers=headers
-                )
-            else:
-                response = requests.get(url, headers=headers)
+            if self.proxy is not None:
+                proxies = {"http": self.proxy, "https": self.proxy}
+
+            response = requests.get(url, headers=headers, proxies=proxies)
 
             if response.status_code in [428, 429]:
-                logging.info("exceeded rate limit. Sleeping for a while")
-                self.toggle_proxy()
-                time.sleep(300)
+                raise RateLimitedException(response)
 
             return response
         except Exception as err:
             logging.warning(
-                "received an error from the server, waiting for 1 minute before retry: %s",
+                "received an error from the server: %s",
                 err,
             )
-            time.sleep(60)
-            return self.fetch(url)
+
+            raise err

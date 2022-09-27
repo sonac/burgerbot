@@ -10,6 +10,7 @@ import pytz
 import requests
 
 from fetcher import Fetcher
+from services import Service
 
 service_url_template = "https://service.berlin.de/dienstleistung/{id}/"
 
@@ -31,12 +32,6 @@ def build_default_url(service_id: int) -> str:
     return default_url_template.format(
         id=service_id, dienstleisterlist=default_dienstleisterlist
     )
-
-
-@dataclass
-class Service:
-    id: int
-    url: str
 
 
 @dataclass
@@ -78,17 +73,21 @@ class ServiceParser:
 
         except Exception as e:  ## sometimes shit happens
             logging.warning(e)
-            self.fetcher.toggle_proxy()
 
         return None
 
-    def parse(self, url: str) -> Optional[str]:
-        response = self.fetcher.fetch(url)
+    def parse(self, service_id: int) -> Service:
+        request_url = service_url_template.format(id=service_id)
+        response = self.fetcher.fetch(request_url)
 
-        if not response.ok:
-            return None
+        response.raise_for_status
 
-        return self.__parse_page(response)
+        service_url = self.__parse_page(response)
+
+        if service_url is None:
+            raise Exception(f"Could not parse service at URL: {request_url}")
+
+        return Service(id=service_id, name="todo: name", city_wide_url=service_url)
 
 
 def date_title_for_slot(slot: bs4.element.Tag):
@@ -186,7 +185,6 @@ class CalendarParser:
 
         except Exception as e:  ## sometimes shit happens
             logging.warning(e)
-            self.fetcher.toggle_proxy()
 
         return []
 
@@ -200,7 +198,8 @@ class CalendarParser:
 
 
 class Parser:
-    service_urls: dict[int, str] = {}
+    cached_services: dict[int, Service] = {}
+    unavailable_services: set[int] = set()
 
     def __init__(self, fetcher: Fetcher) -> None:
         self.fetcher = fetcher
@@ -209,17 +208,20 @@ class Parser:
         self.service_parser = ServiceParser(self.fetcher)
 
     def __url_for_service(self, service_id: int) -> str:
-        if service_id not in self.service_urls:
+        # don't try to look up services that are known to fail
+        if service_id in self.unavailable_services:
+            return build_default_url(service_id)
+
+        if service_id not in self.cached_services:
             # try to detect the URL from the service page
-            url = service_url_template.format(id=service_id)
-            service_url = self.service_parser.parse(url)
+            try:
+                service = self.service_parser.parse(service_id)
+                self.cached_services[service_id] = service
+            except:
+                self.unavailable_services.add(service_id)
+                return build_default_url(service_id)
 
-            if service_url is not None:
-                self.service_urls[service_id] = service_url
-            else:
-                self.service_urls[service_id] = build_default_url(service_id)
-
-        return self.service_urls[service_id]
+        return self.cached_services[service_id].city_wide_url
 
     def parse(self, services: List[int]) -> List[Slot]:
         logging.info("services are: " + str(services))
@@ -230,6 +232,6 @@ class Parser:
 
             results = self.calendar_parser.parse(url)
 
-            service = Service(id=service_id, url=url)
+            service = Service(id=service_id, name="todo: name", city_wide_url=url)
             slots += [Slot(service=service, result=result) for result in results]
         return slots
