@@ -21,3 +21,7 @@ pre-commit install
 source venv/bin/activate
 poetry install
 ```
+
+### Environment Variables
+
+`TELEGRAM_API_KEY` (required): API key for your Telegram bot
