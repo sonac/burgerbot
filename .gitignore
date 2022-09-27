@@ -1,7 +1,6 @@
 __pycache__
 .env
 .venv
-.vscode
 auslander.py
 burgerbot_dev.py
 chats_tmp.json
