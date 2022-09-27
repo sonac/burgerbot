@@ -10,7 +10,9 @@ requests = {extras = ["socks"], version = "^2.26.0"}
 beautifulsoup4 = "^4.9.3"
 python-telegram-bot = "^13.7"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
+black = "^22.8.0"
+pre-commit = "^2.20.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

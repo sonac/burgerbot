@@ -10,8 +10,9 @@ Instructions via: https://python-poetry.org/docs/#installing-manually
 
 ```
 python3 -m venv venv
-venv/bin/pip install -U pip setuptools
-venv/bin/pip install poetry
+pip install -U pip setuptools
+pip install poetry
+pre-commit install
 ```
 
 ### Initialise Development Environment
