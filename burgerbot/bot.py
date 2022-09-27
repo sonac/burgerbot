@@ -243,7 +243,8 @@ class Bot:
             services = self.__get_uq_services()
             slots = self.parser.parse(services)
 
-            users_to_notify: Dict[User, List[Slot]] = {}
+            # group slots so each user only gets a single message
+            users_to_notify: Dict[int, List[Slot]] = {}
 
             for slot in slots:
                 if self.__msg_in_cache(slot.result.url):
@@ -257,11 +258,12 @@ class Bot:
                 users = [u for u in self.users if slot.service.id in u.services]
 
                 for user in users:
-                    if user not in users_to_notify:
-                        users_to_notify[user] = []
-                    users_to_notify[user].append(slot)
+                    if user.chat_id not in users_to_notify:
+                        users_to_notify[user.chat_id] = []
+                    users_to_notify[user.chat_id].append(slot)
 
-            for user, slots in users_to_notify.items():
+            for user_id, slots in users_to_notify.items():
+                user = next(u for u in self.users if u.chat_id == user_id)
                 self.__send_message(user, slots)
 
             self.__clear_cache()
@@ -271,33 +273,32 @@ class Bot:
         slots_for_service = [s for s in slots if s.service.id == service_id]
         slots_for_service.sort(key=lambda x: x.result.date)
 
+        service = self.services_manager.get(service_id)
+
         slot_markdowns: List[str] = []
 
         for slot in slots_for_service:
-            slot_markdowns.append(
-                f"- [{self.__date_from_msg(slot.result.date)}]({slot.result.url})"
-            )
+            slot_markdowns.append(f"• {self.__date_from_msg(slot.result.date)}")
 
         slot_markdown = "\n".join(slot_markdowns)
 
-        service_markdown: str = (
-            f"*{self.services_manager.get(service_id).title}*\n\n{slot_markdown}"
-        )
+        service_markdown: str = f"*{self.services_manager.get(service_id).title}*\n\n{slot_markdown}\n\n[Book here]({service.best_url})"
 
         return service_markdown
 
     def __send_message(self, user: User, slots: List[Slot]) -> None:
         services_markdowns = [
-            self.__build_service_markdown(service, slots) for service in user.services
+            self.__build_service_markdown(service_id, slots)
+            for service_id in user.services
         ]
         services_markdown = "\n\n".join(services_markdowns)
         markdown = f"""
-Available appointments found!
+Available appointments found\!
 
 {services_markdown}
         """
 
-        logging.debug(f"sending msg to {str(user.chat_id)}")
+        logging.debug(f"sending msg to {str(user.chat_id)}: {markdown}")
         try:
             self.updater.bot.send_message(
                 chat_id=user.chat_id, text=markdown, parse_mode=ParseMode.MARKDOWN_V2

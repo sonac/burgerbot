@@ -29,6 +29,22 @@ class Service(DataClassJsonMixin):
     city_wide_url: Optional[str]
     location_urls: Dict[str, str]
 
+    @property
+    def best_url(self) -> str:
+        if self.city_wide_url is not None:
+            return self.city_wide_url
+
+        if len(self.location_urls) == 0:
+            raise Exception(f"service {self.id} has no locations")
+
+        # TODO: this helps The Author™ find an appointment!
+        if self.id == 318998:
+            # find the location with "326509", aka Bezirksamt Treptow-Köpenick
+            return next((lu for lu in self.location_urls.values() if "326509" in lu))
+
+        # TODO: figure out how to specify a location
+        return next(iter(self.location_urls.values()))
+
 
 class ServicesManager:
     _services: Optional[List[Service]] = None

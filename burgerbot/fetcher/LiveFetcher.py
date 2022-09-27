@@ -1,5 +1,4 @@
 import logging
-import time
 from typing import Optional
 
 import requests
@@ -18,7 +17,10 @@ class LiveFetcher(Fetcher):
         self.bot_email = bot_email
         self.bot_id = bot_id
 
-    def fetch(self, url: str) -> bytes:
+    def start_session(self) -> Optional[requests.Session]:
+        return requests.Session()
+
+    def fetch(self, url: str, session: Optional[requests.Session] = None) -> bytes:
         logging.debug(f"Fetching {url}")
 
         headers = {
@@ -36,7 +38,10 @@ class LiveFetcher(Fetcher):
             else:
                 proxies = None
 
-            response = requests.get(url, headers=headers, proxies=proxies)
+            if session is None:
+                response = requests.get(url, headers=headers, proxies=proxies)
+            else:
+                response = session.get(url, headers=headers, proxies=proxies)
 
             if response.status_code in [428, 429]:
                 raise RateLimitedException(response)

@@ -16,22 +16,6 @@ class Parser:
 
         self.calendar_parser = CalendarParser(self.fetcher)
 
-    def __url_for_service(self, service: Service) -> str:
-
-        if service.city_wide_url is not None:
-            return service.city_wide_url
-
-        if len(service.location_urls) == 0:
-            raise Exception(f"service {service.id} has no locations")
-
-        # TODO: this helps The Author™ find an appointment!
-        if service.id == 318998:
-            # find the location with "326509", aka Bezirksamt Treptow-Köpenick
-            return next((lu for lu in service.location_urls.values() if "326509" in lu))
-
-        # TODO: figure out how to specify a location
-        return next(iter(service.location_urls.values()))
-
     def parse(self, services: List[int]) -> List[Slot]:
         logging.info("services to check: " + str(services))
 
@@ -42,7 +26,7 @@ class Parser:
             if service is None:
                 raise Exception(f"could not find service for id {service_id}")
 
-            url = self.__url_for_service(service)
+            url = service.best_url
 
             logging.debug(f"URL for service {service_id}: {url}")
 

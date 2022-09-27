@@ -9,6 +9,7 @@ python = "^3.8"
 requests = {extras = ["socks"], version = "^2.26.0"}
 beautifulsoup4 = "^4.9.3"
 python-telegram-bot = "^13.7"
+python-dateutil = "^2.8.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.8.0"
@@ -21,6 +22,7 @@ types-pytz = "^2022.2.1.0"
 python-dotenv = "^0.21.0"
 ward = "^0.66.1b0"
 dataclasses-json = "^0.5.7"
+types-python-dateutil = "^2.8.19"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

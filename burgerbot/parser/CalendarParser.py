@@ -1,28 +1,16 @@
 import logging
 import urllib.parse
 from datetime import datetime
+from email.mime import base
+from time import mktime
 from typing import List, Optional
 
 import bs4
 import pytz
-import requests
+from dateutil import relativedelta
 
 from burgerbot.fetcher import Fetcher
 from burgerbot.model import SlotResult
-
-
-def date_title_for_slot(slot: bs4.element.Tag):
-    table = slot.find_parent("table")
-
-    if table is None:
-        return None
-
-    title = table.find("th", class_="month")
-
-    if title is None:
-        return None
-
-    return title.text
 
 
 def date_for_slot(slot: bs4.element.Tag):
@@ -71,7 +59,7 @@ class CalendarParser:
     def __init__(self, fetcher: Fetcher) -> None:
         self.fetcher = fetcher
 
-    def __parse_page(self, content: bytes) -> List[SlotResult]:
+    def __parse_page(self, content: bytes, base_url: str) -> List[SlotResult]:
         try:
             soup = bs4.BeautifulSoup(content, "html.parser")
 
@@ -95,7 +83,7 @@ class CalendarParser:
             results: List[SlotResult] = []
             for slot in available_slots:
                 date = date_for_slot(slot)
-                url = url_for_slot("", slot)  # load via request.url
+                url = url_for_slot(base_url, slot)  # load via request.url
                 if date is None or url is None:
                     logging.warning("could not parse slot")
                     continue
@@ -110,5 +98,23 @@ class CalendarParser:
         return []
 
     def parse(self, url: str) -> List[SlotResult]:
-        content = self.fetcher.fetch(url)
-        return self.__parse_page(content)
+        session = self.fetcher.start_session()
+
+        content_page_1 = self.fetcher.fetch(url, session=session)
+        results_page_1 = self.__parse_page(content_page_1, base_url=url)
+
+        # I'm sureeee around midnight at the change of the month this is wrong, but eh.
+        today = datetime.now(pytz.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        in_two_months = today + relativedelta.relativedelta(months=2, day=1)
+        in_two_months_timestamp = int(mktime(in_two_months.timetuple()))
+        page_2_url = f"https://service.berlin.de/terminvereinbarung/termin/day/{in_two_months_timestamp}/"
+
+        content_page_2 = self.fetcher.fetch(page_2_url, session=session)
+        results_page_2 = self.__parse_page(content_page_2, base_url=page_2_url)
+
+        if session is not None:
+            session.close()
+
+        return results_page_1 + results_page_2
