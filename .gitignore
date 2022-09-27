@@ -1,10 +1,9 @@
-.env
-poetry.lock
-chats.json
-chats_tmp.json
-test.py
 __pycache__
+.env
+.vscode
 auslander.py
 burgerbot_dev.py
+chats_tmp.json
+chats.json
 log.txt
-.vscode
+test.py
