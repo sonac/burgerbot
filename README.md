@@ -9,19 +9,26 @@ I was frustrated with the lack of available slots in Burgeramt, so I've created 
 Instructions via: https://python-poetry.org/docs/#installing-manually
 
 ```
-python3 -m venv venv
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -U pip setuptools
 pip install poetry
+poetry install
 pre-commit install
 ```
 
 ### Initialise Development Environment
 
 ```
-source venv/bin/activate
+source .venv/bin/activate
 poetry install
 ```
 
 ### Environment Variables
 
-`TELEGRAM_API_KEY` (required): API key for your Telegram bot
+`TELEGRAM_API_KEY` (required): API key for your Telegram bot.
+`LOG_LEVEL` (optional): Set logging level. Available options [here](https://docs.python.org/3/library/logging.html#levels).
+
+### Proxy
+
+Sometimes we get rate limited, so we can use a proxy to try and dodge it. Setting up a proxy on `127.0.0.1:9050` will do the job.
