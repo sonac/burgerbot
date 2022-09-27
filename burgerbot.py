@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import json
 import logging
@@ -8,7 +8,7 @@ import threading
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from parser import Parser, Slot, build_url
+from parser import Parser, Slot
 from typing import Any, List
 
 from telegram import ParseMode
@@ -17,6 +17,12 @@ from telegram.ext.callbackcontext import CallbackContext
 from telegram.update import Update
 
 CHATS_FILE = "chats.json"
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
+TELEGRAM_API_KEY = os.environ.get("TELEGRAM_API_KEY")
+
+if TELEGRAM_API_KEY is None:
+    logging.error("TELEGRAM_API_KEY is not set")
+    sys.exit(1)
 
 service_map = {
     120335: "Abmeldung einer Wohnung",
@@ -48,9 +54,9 @@ class User:
     chat_id: int
     services: List[int]
 
-    def __init__(self, chat_id, services=[120686]) -> None:
+    def __init__(self, chat_id, services=[]) -> None:
         self.chat_id = chat_id
-        self.services = services if len(services) > 0 else [120686]
+        self.services = services
 
     def marshall_user(self) -> dict[str, Any]:
         self.services = list(
@@ -61,7 +67,7 @@ class User:
 
 class Bot:
     def __init__(self) -> None:
-        self.updater = Updater(os.environ["TELEGRAM_API_KEY"])
+        self.updater = Updater(TELEGRAM_API_KEY)
         self.__init_chats()
         self.users = self.__get_chats()
         self.services = self.__get_uq_services()
@@ -240,18 +246,19 @@ class Bot:
 
     def __parse(self) -> None:
         while True:
+            logging.debug("starting parse run")
             slots = self.parser.parse()
             for slot in slots:
                 self.__send_message(slot)
             time.sleep(30)
 
     def __send_message(self, slot: Slot) -> None:
-        if self.__msg_in_cache(slot.msg):
+        if self.__msg_in_cache(slot.result.url):
             logging.info("Notification is cached already. Do not repeat sending")
             return
-        self.__add_msg_to_cache(slot.msg)
-        md_msg = f"There are slots on {self.__date_from_msg(slot.msg)} available for booking for {service_map[slot.service_id]}, click [here]({build_url(slot.service_id)}) to check it out"
-        users = [u for u in self.users if slot.service_id in u.services]
+        self.__add_msg_to_cache(slot.result.url)
+        md_msg = f"There are slots on {self.__date_from_msg(slot.result.date)} available for booking for {service_map[slot.service.id]}, click [here]({slot.service.url}) to check it out"
+        users = [u for u in self.users if slot.service.id in u.services]
         for u in users:
             logging.debug(f"sending msg to {str(u.chat_id)}")
             try:
@@ -286,13 +293,8 @@ class Bot:
             logging.info("clearing some messages from cache")
             self.cache = [m for m in self.cache if (cur_ts - m.ts) < 300]
 
-    def __date_from_msg(self, msg: str) -> str:
-        msg_arr = msg.split("/")
-        logging.info(msg)
-        ts = (
-            int(msg_arr[len(msg_arr) - 2]) + 7200
-        )  # adding two hours to match Berlin TZ with UTC
-        return datetime.fromtimestamp(ts).strftime("%d %B")
+    def __date_from_msg(self, date: datetime) -> str:
+        return date.strftime("%d %B")
 
     def start(self) -> None:
         logging.info("starting bot")
@@ -310,7 +312,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    log_level = os.getenv("LOG_LEVEL", "INFO")
+    log_level = LOG_LEVEL
     logging.basicConfig(
         level=log_level,
         format="%(asctime)s [%(levelname)-5.5s] %(message)s",

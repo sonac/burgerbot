@@ -17,6 +17,7 @@ isort = "^5.10.1"
 mypy = "^0.971"
 types-requests = "^2.28.11"
 types-beautifulsoup4 = "^4.11.6"
+types-pytz = "^2022.2.1.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
