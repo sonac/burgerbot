@@ -1,6 +1,8 @@
 ## BurgerBot
 
-I was frustrated with the lack of available slots in Burgeramt, so I've created this bot for myself, to catch one that available. It's pretty straightforward, once per 30 seconds it parses page with all appointments in all Berlin Burgeramts and if there is available slot for current and next month - it notifies in telegram with the link to registration.
+From the original README:
+
+> I was frustrated with the lack of available slots in Burgeramt, so I've created this bot for myself, to catch one that available. It's pretty straightforward, once per 30 seconds it parses page with all appointments in all Berlin Burgeramts and if there is available slot for current and next month - it notifies in telegram with the link to registration.
 
 ## Set up
 
@@ -25,14 +27,10 @@ pre-commit install
 
 ### Environment Variables
 
-`TELEGRAM_API_KEY` (required): API key for your Telegram bot. More information [here](https://core.telegram.org/bots).
-`BOT_EMAIL` (required): Email addressed used in request headers to identify bot.
-`BOT_ID` (required): Unique string used in request headers to identify bot.
-`LOG_LEVEL` (optional): Set logging level. Available options [here](https://docs.python.org/3/library/logging.html#levels).
-
-### Proxy
-
-Sometimes we get rate limited, so we can use a proxy to try and dodge it. Setting up a proxy on `127.0.0.1:9050` will do the job.
+- `TELEGRAM_API_KEY` (required): API key for your Telegram bot. More information [here](https://core.telegram.org/bots).
+- `BOT_EMAIL` (required): Email addressed used in request headers to identify bot.
+- `BOT_ID` (required): Unique string used in request headers to identify bot.
+- `LOG_LEVEL` (optional): Set logging level. Available options [here](https://docs.python.org/3/library/logging.html#levels).
 
 ## Running
 
@@ -42,4 +40,5 @@ python3 ./burgerbot/bot.py
 
 ## Acknowledgements
 
-- [burgeramt-appointments-websockets](https://github.com/nicbou/burgeramt-appointments-websockets) did a lot of the groundwork to determine the base standards - user agent, refresh interval, etc
+- [sonac/burgerbot](https://github.com/sonac/burgerbot) was the original code this was based off
+- [nicbou/burgeramt-appointments-websockets](https://github.com/nicbou/burgeramt-appointments-websockets) did a lot of the groundwork to determine the base standards - user agent, refresh interval, etc
