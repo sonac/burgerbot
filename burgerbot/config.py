@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-CHATS_FILE = "chats.json"
-SERVICES_FILE = "services.json"
+CHATS_FILE = "data/chats.json"
+SERVICES_FILE = "data/services.json"
 REFRESH_INTERVAL = (
     180  # minimum of 3 minutes is considered acceptable by berlin.de staff
 )
