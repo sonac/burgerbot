@@ -37,6 +37,7 @@ service_map = {
     120914: 'Zulassung eines Fahrzeuges mit auswärtigem Kennzeichen mit Halterwechsel',
     121627: 'Fahrerlaubnis - Ersterteilung beantragen',
     120335: 'Abmeldung einer Wohnung',
+    121616: 'Führerschein - Kartenführerschein umtauschen',
 }
 
 @dataclass
