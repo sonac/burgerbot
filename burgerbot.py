@@ -38,6 +38,8 @@ service_map = {
     121627: 'Fahrerlaubnis - Ersterteilung beantragen',
     120335: 'Abmeldung einer Wohnung',
     121616: 'Führerschein - Kartenführerschein umtauschen',
+    305244: 'Aufenthaltserlaubnis zum Studium',
+    329328: 'Aufenthaltserlaubnis für Fachkräfte mit akademischer Ausbildung',
 }
 
 @dataclass
