@@ -34,6 +34,7 @@ service_map = {
     326798: 'Blaue Karte EU auf einen neuen Pass übertragen',
     121469: 'Kinderreisepass beantragen / verlängern / aktualisieren',
     121598: 'Fahrerlaubnis - Umschreibung einer ausländischen Fahrerlaubnis aus einem EU-/EWR-Staat',
+    327537: 'Fahrerlaubnis - Umschreibung einer ausländischen Fahrerlaubnis aus einem Nicht-EU/EWR-Land (Drittstaat/Anlage 11)',
     120914: 'Zulassung eines Fahrzeuges mit auswärtigem Kennzeichen mit Halterwechsel',
     121627: 'Fahrerlaubnis - Ersterteilung beantragen',
     120335: 'Abmeldung einer Wohnung',
