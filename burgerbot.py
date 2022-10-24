@@ -35,10 +35,12 @@ service_map = {
     121627: 'Fahrerlaubnis - Ersterteilung beantragen',
     121701: 'Beglaubigung von Kopien',
     121921: 'Gewerbeanmeldung',
+    305244: 'Aufenthaltserlaubnis zum Studium',
     318998: 'Einbürgerung - Verleihung der deutschen Staatsangehörigkeit beantragen',
     324280: 'Niederlassungserlaubnis oder Erlaubnis',
     326798: 'Blaue Karte EU auf einen neuen Pass übertragen',
     327537: 'Fahrerlaubnis - Umschreibung einer ausländischen',
+    329328: 'Aufenthaltserlaubnis für Fachkräfte mit akademischer Ausbildung',
 }
 
 @dataclass
