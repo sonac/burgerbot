@@ -39,7 +39,7 @@ service_map = {
     318998: 'Einbürgerung - Verleihung der deutschen Staatsangehörigkeit beantragen',
     324280: 'Niederlassungserlaubnis oder Erlaubnis',
     326798: 'Blaue Karte EU auf einen neuen Pass übertragen',
-    327537: 'Fahrerlaubnis - Umschreibung einer ausländischen',
+    327537: 'Fahrerlaubnis - Umschreibung einer ausländischen Fahrerlaubnis aus einem Nicht-EU/EWR-Land (Drittstaat/Anlage 11)',
     329328: 'Aufenthaltserlaubnis für Fachkräfte mit akademischer Ausbildung',
 }
 
