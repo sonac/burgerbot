@@ -16,6 +16,7 @@ from telegram.ext.callbackcontext import CallbackContext
 from telegram.update import Update
 
 from parser import Parser, Slot, build_url
+from parser2 import Parser2, Alert
 
 
 CHATS_FILE = 'chats.json'
@@ -53,13 +54,18 @@ class Message:
 class User:
   chat_id: int
   services: List[int]
-  def __init__(self, chat_id, services=[120686]):
+  personal_link: str
+  def __init__(self, chat_id, services=[120686], personal_link=''):
     self.chat_id = chat_id
     self.services = services if len(services) > 0 else [120686]
+    if len(personal_link) > 0:
+      self.personal_link = personal_link
 
 
   def marshall_user(self) -> str:
     self.services = list(set([s for s in self.services if s in list(service_map.keys())]))
+    if len(self.personal_link) > 0:
+      self.personal_link = personal_link
     return asdict(self)
 
 
@@ -70,6 +76,8 @@ class Bot:
     self.users = self.__get_chats()
     self.services = self.__get_uq_services()
     self.parser = Parser(self.services)
+    self.personal_link = self.__get_uq_personal_links()[0]
+    self.parser2 = Parser2(self.personal_link)
     self.dispatcher = self.updater.dispatcher
     self.dispatcher.add_handler(CommandHandler('help', self.__help))
     self.dispatcher.add_handler(CommandHandler('start', self.__start))
@@ -78,6 +86,8 @@ class Bot:
     self.dispatcher.add_handler(CommandHandler('remove_service', self.__remove_service))
     self.dispatcher.add_handler(CommandHandler('my_services', self.__my_services))
     self.dispatcher.add_handler(CommandHandler('services', self.__services))
+    self.dispatcher.add_handler(CommandHandler('add_aus', self.__add_aus))
+    self.dispatcher.add_handler(CommandHandler('remove_aus', self.__remove_aus))
     self.cache: List[Message] = []
 
 
@@ -88,6 +98,13 @@ class Bot:
     services = filter(lambda x: x in service_map.keys(), services)
     return list(set(services))
 
+  def __get_uq_personal_links(self) -> List[int]:
+    personal_links = []
+    for u in self.users:
+      personal_links.extend([u.personal_link])
+    personal_links = filter(lambda x: x in service_map.keys(), personal_links)
+    return list(set(personal_links))
+
   def __init_chats(self)  -> None:
     if not os.path.exists(CHATS_FILE):
       with open(CHATS_FILE, "w") as f:
@@ -95,7 +112,7 @@ class Bot:
 
   def __get_chats(self) -> List[User]:
     with open(CHATS_FILE, 'r') as f:
-      users = [User(u['chat_id'], u['services']) for u in json.load(f)]
+      users = [User(u['chat_id'], u['services'], u['personal_link']) for u in json.load(f)]
       f.close()
       print(users)
       return users
@@ -131,6 +148,8 @@ class Bot:
 /remove_service <service_id> - remove service from your list
 /my_services - view services on your list
 /services - list of available services
+/add_aus <personal_link> - add Ausländer personal link
+/remove_aus - remove Ausländer personal link
 """)
     except Exception as e:
       logging.error(e)
@@ -183,6 +202,29 @@ class Bot:
     except IndexError:
       update.message.reply_text("Wrong usage. Please type '/remove_service 123456'")
 
+  def __add_aus(self, update: Update, _: CallbackContext) -> None:
+    logging.info(f'adding aus {update.message}')
+    try:
+      personal_link = int(update.message.text.split(' ')[1])
+      for u in self.users:
+        if u.chat_id == update.message.chat_id:
+          u.personal_link = personal_link
+          self.__persist_chats()
+          break
+      update.message.reply_text("Aus added")
+    except Exception as e:
+      update.message.reply_text("Failed to add aus, have you specified your personal form link?")
+      logging.error(e)
+
+  def __remove_aus(self, update: Update, _: CallbackContext) -> None:
+    logging.info(f'removing aus {update.message}')
+    for u in self.users:
+      if u.chat_id == update.message.chat_id:
+        u.personal_link = None
+        self.__persist_chats()
+        break
+    update.message.reply_text("Service removed")
+
   def __poll(self) -> None:
     try:
       self.updater.start_polling()
@@ -196,6 +238,9 @@ class Bot:
       slots = self.parser.parse()
       for slot in slots:
         self.__send_message(slot)
+      alerts = self.parser2.parse()
+      for alert in alerts:
+        self.__send_message2(alert)
       time.sleep(30)
 
 
@@ -213,6 +258,25 @@ class Bot:
       except Exception as e:
         if 'bot was blocked by the user' in e.__str__() or 'user is deactivated' in e.__str__():
           logging.info('removing since user blocked bot or user was deactivated')
+          self.__remove_chat(u.chat_id)
+        else:
+          logging.warning(e)
+    self.__clear_cache()
+
+  def __send_message2(self, alert: Alert) -> None:
+    if self.__msg_in_cache(alert.msg):
+      logging.info('Notification is cached already. Do not repeat sending')
+      return
+    self.__add_msg_to_cache(alert.msg)
+    md_msg = f"Personal link alert: '{alert.msg}', click [here]({self.personal_link}) to check it out"
+    users = [u for u in self.users]
+    for u in users:
+      logging.debug(f"sending msg to {str(u.chat_id)}")
+      try:
+        self.updater.bot.send_message(chat_id=u.chat_id, text=md_msg, parse_mode=ParseMode.MARKDOWN_V2)
+      except Exception as e:
+        if 'bot was blocked by the user' in e.__str__():
+          logging.info('removing since user blocked bot')
           self.__remove_chat(u.chat_id)
         else:
           logging.warning(e)
