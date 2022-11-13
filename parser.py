@@ -45,7 +45,7 @@ class Parser:
 
   def __parse_page(self, page, service_id) -> List[str]:
     try:
-      if page.status_code == 428:
+      if page.status_code == 428 or page.status_code == 429:
         logging.info('exceeded rate limit. Sleeping for a while')
         time.sleep(299)
         self.__toggle_proxy()
