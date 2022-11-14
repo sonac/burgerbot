@@ -59,6 +59,8 @@ class Parser:
             is_valid = soup.find_all("td", class_="nichtbuchbar")
             if len(is_valid) > 0:
                 logging.info("page is valid")
+            else:
+                logging.debug(page)
             if len(slots) == 0:
                 logging.info("no luck yet")
             return [Slot(slot.a["href"], service_id) for slot in slots]
