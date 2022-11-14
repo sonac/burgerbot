@@ -49,7 +49,7 @@ class Parser:
         logging.info('exceeded rate limit. Sleeping for a while')
         time.sleep(299)
         self.__toggle_proxy()
-        return None
+        return []
       soup = BeautifulSoup(page.content, 'html.parser')
       slots = soup.find_all('td', class_='buchbar')
       is_valid = soup.find_all('td', class_='nichtbuchbar')
