@@ -30,16 +30,16 @@ service_map = {
     120703: "Reisepass beantragen",
     120914: "Zulassung eines Fahrzeuges mit auswärtigem Kennzeichen mit Halterwechsel",
     121469: "Kinderreisepass beantragen / verlängern / aktualisieren",
-    121598: "Fahrerlaubnis - Umschreibung einer ausländischen Fahrerlaubnis aus einem EU-/EWR-Staat",
-    121616: "Führerschein - Kartenführerschein umtauschen",
-    121627: "Fahrerlaubnis - Ersterteilung beantragen",
+    121598: "Fahrerlaubnis Umschreibung einer ausländischen Fahrerlaubnis aus einem EU-/EWR-Staat",
+    121616: "Führerschein Kartenführerschein umtauschen",
+    121627: "Fahrerlaubnis Ersterteilung beantragen",
     121701: "Beglaubigung von Kopien",
     121921: "Gewerbeanmeldung",
     305244: "Aufenthaltserlaubnis zum Studium",
-    318998: "Einbürgerung - Verleihung der deutschen Staatsangehörigkeit beantragen",
+    318998: "Einbürgerung Verleihung der deutschen Staatsangehörigkeit beantragen",
     324280: "Niederlassungserlaubnis oder Erlaubnis",
     326798: "Blaue Karte EU auf einen neuen Pass übertragen",
-    327537: "Fahrerlaubnis - Umschreibung einer ausländischen Fahrerlaubnis aus einem Nicht-EU/EWR-Land (Drittstaat/Anlage 11)",
+    327537: "Fahrerlaubnis Umschreibung einer ausländischen Fahrerlaubnis aus einem Nicht-EU/EWR-Land (Drittstaat/Anlage 11)",
     329328: "Aufenthaltserlaubnis für Fachkräfte mit akademischer Ausbildung",
 }
 
@@ -239,7 +239,7 @@ class Bot:
                     )
                     self.__remove_chat(u.chat_id)
                 else:
-                    logging.error('error occured when sending message {md_msg}, \n{e}')
+                    logging.error("error occured when sending message {md_msg}, \n{e}")
         self.__clear_cache()
 
     def __msg_in_cache(self, msg: str) -> bool:
