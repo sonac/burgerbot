@@ -27,6 +27,7 @@ service_map = {
     120686: "Anmeldung",
     120691: "Verpflichtungserklärung für einen kurzen Aufenthalt",
     120701: "Personalausweis beantragen",
+    120702: "Meldebescheinigung",
     120703: "Reisepass beantragen",
     120914: "Zulassung eines Fahrzeuges mit auswärtigem Kennzeichen mit Halterwechsel",
     121469: "Kinderreisepass beantragen / verlängern / aktualisieren",
