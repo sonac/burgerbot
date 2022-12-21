@@ -38,7 +38,7 @@ service_map = {
     121921: "Gewerbeanmeldung",
     305244: "Aufenthaltserlaubnis zum Studium",
     318998: "Einbürgerung Verleihung der deutschen Staatsangehörigkeit beantragen",
-    324280: "Niederlassungserlaubnis oder Erlaubnis",
+    324280: "Niederlassungserlaubnis oder Erlaubnis zum Daueraufenthalt-EU auf einen neuen Pass übertragen",
     326798: "Blaue Karte EU auf einen neuen Pass übertragen",
     327537: "Fahrerlaubnis Umschreibung einer ausländischen Fahrerlaubnis aus einem Nicht-EU/EWR-Land (Drittstaat/Anlage 11)",
     329328: "Aufenthaltserlaubnis für Fachkräfte mit akademischer Ausbildung",
