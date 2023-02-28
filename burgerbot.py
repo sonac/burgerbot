@@ -25,10 +25,10 @@ register_prefix = "https://service.berlin.de"
 service_map = {
     120335: "Abmeldung einer Wohnung",
     120686: "Anmeldung",
-    120691: "Verpflichtungserklärung für einen kurzen Aufenthalt",
-    120701: "Personalausweis beantragen",
+    326540: "Verpflichtungserklärung für einen kurzen Aufenthalt",
+    120703: "Personalausweis beantragen",
     120702: "Meldebescheinigung",
-    120703: "Reisepass beantragen",
+    121151: "Reisepass beantragen",
     120914: "Zulassung eines Fahrzeuges mit auswärtigem Kennzeichen mit Halterwechsel",
     121469: "Kinderreisepass beantragen / verlängern / aktualisieren",
     121598: "Fahrerlaubnis Umschreibung einer ausländischen Fahrerlaubnis aus einem EU-/EWR-Staat",
