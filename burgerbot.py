@@ -26,6 +26,7 @@ service_map = {
     120335: "Abmeldung einer Wohnung",
     120686: "Anmeldung",
     120691: "Verpflichtungserklärung für einen kurzen Aufenthalt",
+    120697: "Änderung/Wechsel der Hauptwohnung",
     120701: "Personalausweis beantragen",
     120702: "Meldebescheinigung",
     120703: "Reisepass beantragen",
