@@ -7,7 +7,7 @@ import threading
 import logging
 import sys
 from dataclasses import dataclass, asdict
-from typing import List
+from typing import Any, List
 from datetime import datetime
 
 from telegram import ParseMode
@@ -63,7 +63,7 @@ class User:
         self.chat_id = chat_id
         self.services = services if len(services) > 0 else [120686]
 
-    def marshall_user(self) -> str:
+    def marshall_user(self) -> dict[str, Any]:
         self.services = list(
             set([s for s in self.services if s in list(service_map.keys())])
         )
@@ -78,6 +78,7 @@ class Bot:
         self.services = self.__get_uq_services()
         self.parser = Parser(self.services)
         self.dispatcher = self.updater.dispatcher
+        assert self.dispatcher is not None
         self.dispatcher.add_handler(CommandHandler("help", self.__help))
         self.dispatcher.add_handler(CommandHandler("start", self.__start))
         self.dispatcher.add_handler(CommandHandler("stop", self.__stop))
