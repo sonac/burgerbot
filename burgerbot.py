@@ -78,6 +78,7 @@ class Bot:
         self.services = self.__get_uq_services()
         self.parser = Parser(self.services)
         self.dispatcher = self.updater.dispatcher
+        assert self.dispatcher is not None
         self.dispatcher.add_handler(CommandHandler("help", self.__help))
         self.dispatcher.add_handler(CommandHandler("start", self.__start))
         self.dispatcher.add_handler(CommandHandler("stop", self.__stop))
