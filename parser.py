@@ -70,8 +70,8 @@ class Parser:
     def add_service(self, service_id: int) -> None:
         self.services.append(service_id)
 
-    def parse(self) -> List[str]:
-        slots = []
+    def parse(self) -> List[Slot]:
+        slots: list[Slot] = []
         logging.info("services are: " + str(self.services))
         for svc in self.services:
             page = self.__get_url(build_url(svc))
