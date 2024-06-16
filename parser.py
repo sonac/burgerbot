@@ -1,7 +1,6 @@
 import time
 import logging
 from dataclasses import dataclass
-from re import S
 from typing import List, Optional
 
 import requests
