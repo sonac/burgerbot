@@ -1,8 +1,8 @@
 import time
 import logging
 from dataclasses import dataclass
-from typing import List
 from re import S
+from typing import List, Optional
 
 import requests
 from bs4 import BeautifulSoup
@@ -47,7 +47,7 @@ class Parser:
     def __toggle_proxy(self) -> None:
         self.proxy_on = not self.proxy_on
 
-    def __parse_page(self, page, service_id) -> List[str]:
+    def __parse_page(self, page, service_id) -> Optional[List[Slot]]:
         try:
             if page.status_code == 428 or page.status_code == 429:
                 logging.info("exceeded rate limit. Sleeping for a while")
@@ -76,5 +76,9 @@ class Parser:
         logging.info("services are: " + str(self.services))
         for svc in self.services:
             page = self.__get_url(build_url(svc))
-            slots += self.__parse_page(page, svc)
+            parsed_slots = self.__parse_page(page, svc)
+            if parsed_slots is None:
+                continue
+
+            slots += parsed_slots
         return slots
