@@ -75,8 +75,7 @@ class Bot:
         self.updater = Updater(os.environ["TELEGRAM_API_KEY"])
         self.__init_chats()
         self.users = self.__get_chats()
-        self.services = self.__get_uq_services()
-        self.parser = Parser(self.services)
+        self.parser = Parser()
         self.dispatcher = self.updater.dispatcher
         assert self.dispatcher is not None
         self.dispatcher.add_handler(CommandHandler("help", self.__help))
@@ -90,15 +89,13 @@ class Bot:
         self.dispatcher.add_handler(CommandHandler("services", self.__services))
         self.cache: List[Message] = []
 
-    def __get_uq_services(self) -> List[int]:
-        services = {
+    def __get_uq_services(self) -> set[int]:
+        return {
             service
             for user in self.users.values()
             for service in user.services
             if service in service_map
         }
-
-        return list(services)
 
     def __init_chats(self) -> None:
         if not os.path.exists(CHATS_FILE):
@@ -222,7 +219,9 @@ class Bot:
 
     def __parse(self) -> None:
         while True:
-            slots = self.parser.parse()
+            services = self.__get_uq_services()
+            logging.info(f"services are: {services}")
+            slots = self.parser.parse(services)
             for slot in slots:
                 self.__send_message(slot)
             time.sleep(30)

@@ -1,7 +1,7 @@
 import time
 import logging
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 import requests
 from bs4 import BeautifulSoup
@@ -24,10 +24,8 @@ class Slot:
 
 
 class Parser:
-    def __init__(self, services: List[int]) -> None:
-        self.services = services
+    def __init__(self) -> None:
         self.proxy_on: bool = False
-        self.parse()
 
     def __get_url(self, url) -> requests.Response:
         logging.debug(url)
@@ -67,13 +65,9 @@ class Parser:
             logging.error(f"error occured during page parsing, {e}")
             self.__toggle_proxy()
 
-    def add_service(self, service_id: int) -> None:
-        self.services.append(service_id)
-
-    def parse(self) -> List[Slot]:
+    def parse(self, services: Iterable[int]) -> List[Slot]:
         slots: list[Slot] = []
-        logging.info("services are: " + str(self.services))
-        for svc in self.services:
+        for svc in services:
             page = self.__get_url(build_url(svc))
             parsed_slots = self.__parse_page(page, svc)
             if parsed_slots is None:
