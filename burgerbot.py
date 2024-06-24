@@ -249,7 +249,7 @@ class Bot:
                     )
                     self.__remove_chat(u.chat_id)
                 else:
-                    logging.error(f"error occured when sending message {md_msg}, \n{e}")
+                    logging.exception(f"error occured when sending message '{md_msg}")
         self.__clear_cache()
 
     def __msg_in_cache(self, msg: str) -> bool:
