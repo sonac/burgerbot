@@ -7,7 +7,7 @@ import threading
 import logging
 import sys
 from dataclasses import dataclass, asdict
-from typing import List
+from typing import Any, List
 from datetime import datetime
 
 from telegram import ParseMode
@@ -32,18 +32,18 @@ service_map = {
     120703: "Reisepass beantragen",
     120914: "Zulassung eines Fahrzeuges mit auswärtigem Kennzeichen mit Halterwechsel",
     121469: "Kinderreisepass beantragen / verlängern / aktualisieren",
-    121598: "Fahrerlaubnis Umschreibung einer ausländischen Fahrerlaubnis aus einem EU-/EWR-Staat",
+    121598: "Fahrerlaubnis Umschreibung einer ausländischen Fahrerlaubnis aus einem EU\\-/EWR\\-Staat",
     121616: "Führerschein Kartenführerschein umtauschen",
     121627: "Fahrerlaubnis Ersterteilung beantragen",
     121701: "Beglaubigung von Kopien",
     121921: "Gewerbeanmeldung",
     305244: "Aufenthaltserlaubnis zum Studium",
     318998: "Einbürgerung Verleihung der deutschen Staatsangehörigkeit beantragen",
-    324269: "Aufenthaltserlaubnis für im Bundesgebiet geborene Kinder - Erteilung",
-    324280: "Niederlassungserlaubnis oder Erlaubnis zum Daueraufenthalt-EU auf einen neuen Pass übertragen",
+    324269: "Aufenthaltserlaubnis für im Bundesgebiet geborene Kinder \\- Erteilung",
+    324280: "Niederlassungserlaubnis oder Erlaubnis zum Daueraufenthalt\\-EU auf einen neuen Pass übertragen",
     326556: "Niederlassungserlaubnis für Inhaber einer Blauen Karte EU",
     326798: "Blaue Karte EU auf einen neuen Pass übertragen",
-    327537: "Fahrerlaubnis Umschreibung einer ausländischen Fahrerlaubnis aus einem Nicht-EU/EWR-Land (Drittstaat/Anlage 11)",
+    327537: "Fahrerlaubnis Umschreibung einer ausländischen Fahrerlaubnis aus einem Nicht\\-EU/EWR\\-Land \\(Drittstaat/Anlage 11\\)",
     329328: "Aufenthaltserlaubnis für Fachkräfte mit akademischer Ausbildung",
 }
 
@@ -63,7 +63,7 @@ class User:
         self.chat_id = chat_id
         self.services = services if len(services) > 0 else [120686]
 
-    def marshall_user(self) -> str:
+    def marshall_user(self) -> dict[str, Any]:
         self.services = list(
             set([s for s in self.services if s in list(service_map.keys())])
         )
@@ -75,9 +75,9 @@ class Bot:
         self.updater = Updater(os.environ["TELEGRAM_API_KEY"])
         self.__init_chats()
         self.users = self.__get_chats()
-        self.services = self.__get_uq_services()
-        self.parser = Parser(self.services)
+        self.parser = Parser()
         self.dispatcher = self.updater.dispatcher
+        assert self.dispatcher is not None
         self.dispatcher.add_handler(CommandHandler("help", self.__help))
         self.dispatcher.add_handler(CommandHandler("start", self.__start))
         self.dispatcher.add_handler(CommandHandler("stop", self.__stop))
@@ -90,39 +90,42 @@ class Bot:
         self.cache: List[Message] = []
         self.exit = threading.Event()
 
-    def __get_uq_services(self) -> List[int]:
-        services = []
-        for u in self.users:
-            services.extend(u.services)
-        services = filter(lambda x: x in service_map.keys(), services)
-        return list(set(services))
+    def __get_uq_services(self) -> set[int]:
+        return {
+            service
+            for user in self.users.values()
+            for service in user.services
+            if service in service_map
+        }
 
     def __init_chats(self) -> None:
         if not os.path.exists(CHATS_FILE):
             with open(CHATS_FILE, "w") as f:
                 f.write("[]")
 
-    def __get_chats(self) -> List[User]:
+    def __get_chats(self) -> dict[int, User]:
         with open(CHATS_FILE, "r") as f:
             users = [User(u["chat_id"], u["services"]) for u in json.load(f)]
-            f.close()
-            print(users)
-            return users
+            logging.info(users)
+            return {u.chat_id: u for u in users}
 
     def __persist_chats(self) -> None:
         with open(CHATS_FILE, "w") as f:
-            json.dump([u.marshall_user() for u in self.users], f)
-            f.close()
+            marshalled_users = [u.marshall_user() for u in self.users.values()]
+            json.dump(marshalled_users, f)
 
     def __add_chat(self, chat_id: int) -> None:
-        if chat_id not in [u.chat_id for u in self.users]:
-            logging.info("adding new user")
-            self.users.append(User(chat_id))
-            self.__persist_chats()
+        if chat_id in self.users:
+            logging.info(f"attempted to add user {chat_id} but it already exists")
+            return
+
+        logging.info(f"adding new user {chat_id}")
+        self.users[chat_id] = User(chat_id)
+        self.__persist_chats()
 
     def __remove_chat(self, chat_id: int) -> None:
         logging.info("removing the chat " + str(chat_id))
-        self.users = [u for u in self.users if u.chat_id != chat_id]
+        self.users.pop(chat_id)
         self.__persist_chats()
 
     def __services(self, update: Update, _: CallbackContext) -> None:
@@ -158,13 +161,10 @@ class Bot:
         update.message.reply_text("Thanks for using me! Bye!")
 
     def __my_services(self, update: Update, _: CallbackContext) -> None:
+        chat_id = update.message.chat_id
         try:
-            service_ids = set(
-                service_id
-                for u in self.users
-                for service_id in u.services
-                if u.chat_id == update.message.chat_id
-            )
+            user = self.users[chat_id]
+            service_ids = set(user.services)
             msg = (
                 "\n".join([f" - {service_id}" for service_id in service_ids])
                 or " - (none)"
@@ -172,19 +172,22 @@ class Bot:
             update.message.reply_text(
                 "The following services are on your list:\n" + msg
             )
+        except KeyError:
+            logging.warning(f"user {chat_id} not found")
         except Exception as e:
             logging.error(f"error occured when listing user services, {e}")
 
     def __add_service(self, update: Update, _: CallbackContext) -> None:
         logging.info(f"adding service {update.message}")
+        chat_id = update.message.chat_id
         try:
+            user = self.users[chat_id]
             service_id = int(update.message.text.split(" ")[1])
-            for u in self.users:
-                if u.chat_id == update.message.chat_id:
-                    u.services.append(int(service_id))
-                    self.__persist_chats()
-                    break
+            user.services.append(service_id)
+            self.__persist_chats()
             update.message.reply_text("Service added")
+        except KeyError:
+            logging.warning(f"user {chat_id} not found")
         except Exception as e:
             update.message.reply_text(
                 "Failed to add service, have you specified the service id?"
@@ -193,14 +196,15 @@ class Bot:
 
     def __remove_service(self, update: Update, _: CallbackContext) -> None:
         logging.info(f"removing service {update.message}")
+        chat_id = update.message.chat_id
         try:
+            user = self.users[chat_id]
             service_id = int(update.message.text.split(" ")[1])
-            for u in self.users:
-                if u.chat_id == update.message.chat_id:
-                    u.services.remove(int(service_id))
-                    self.__persist_chats()
-                    break
+            user.services.remove(service_id)
+            self.__persist_chats()
             update.message.reply_text("Service removed")
+        except KeyError:
+            logging.warning(f"user {chat_id} not found")
         except IndexError:
             update.message.reply_text(
                 "Wrong usage. Please type '/remove_service 123456'"
@@ -216,7 +220,9 @@ class Bot:
 
     def __parse(self) -> None:
         while not self.exit.is_set():
-            slots = self.parser.parse()
+            services = self.__get_uq_services()
+            logging.info(f"services are: {services}")
+            slots = self.parser.parse(services)
             for slot in slots:
                 self.__send_message(slot)
             self.exit.wait(30)
@@ -227,7 +233,7 @@ class Bot:
             return
         self.__add_msg_to_cache(slot.msg)
         md_msg = f"There are slots on {self.__date_from_msg(slot.msg)} available for booking for {service_map[slot.service_id]}, click [here]({build_url(slot.service_id)}) to check it out"
-        users = [u for u in self.users if slot.service_id in u.services]
+        users = [u for u in self.users.values() if slot.service_id in u.services]
         for u in users:
             logging.debug(f"sending msg to {str(u.chat_id)}")
             try:
@@ -244,7 +250,7 @@ class Bot:
                     )
                     self.__remove_chat(u.chat_id)
                 else:
-                    logging.error("error occured when sending message {md_msg}, \n{e}")
+                    logging.exception(f"error occured when sending message '{md_msg}")
         self.__clear_cache()
 
     def __msg_in_cache(self, msg: str) -> bool:
