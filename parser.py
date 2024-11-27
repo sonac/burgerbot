@@ -1,8 +1,7 @@
 import time
 import logging
 from dataclasses import dataclass
-from typing import List
-from re import S
+from typing import Iterable, List, Optional
 
 import requests
 from bs4 import BeautifulSoup
@@ -25,10 +24,8 @@ class Slot:
 
 
 class Parser:
-    def __init__(self, services: List[int]) -> None:
-        self.services = services
+    def __init__(self) -> None:
         self.proxy_on: bool = False
-        self.parse()
 
     def __get_url(self, url) -> requests.Response:
         logging.debug(url)
@@ -47,7 +44,7 @@ class Parser:
     def __toggle_proxy(self) -> None:
         self.proxy_on = not self.proxy_on
 
-    def __parse_page(self, page, service_id) -> List[str]:
+    def __parse_page(self, page, service_id) -> Optional[List[Slot]]:
         try:
             if page.status_code == 428 or page.status_code == 429:
                 logging.info("exceeded rate limit. Sleeping for a while")
@@ -68,13 +65,13 @@ class Parser:
             logging.error(f"error occured during page parsing, {e}")
             self.__toggle_proxy()
 
-    def add_service(self, service_id: int) -> None:
-        self.services.append(service_id)
-
-    def parse(self) -> List[str]:
-        slots = []
-        logging.info("services are: " + str(self.services))
-        for svc in self.services:
+    def parse(self, services: Iterable[int]) -> List[Slot]:
+        slots: list[Slot] = []
+        for svc in services:
             page = self.__get_url(build_url(svc))
-            slots += self.__parse_page(page, svc)
+            parsed_slots = self.__parse_page(page, svc)
+            if parsed_slots is None:
+                continue
+
+            slots += parsed_slots
         return slots
